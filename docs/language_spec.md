@@ -139,15 +139,6 @@ Plasma supports C-style single-line comments starting with `//`.
 ## Example Program
 
 ```plasma
-int main():
-    int x = 42;
-    float sum = add(x, 10);
-    bool pos = is_positive(x);
-    int total = 0;
-    for i in range(5):
-        total = total + i;
-    return total;
-
 float add(int a, int b):
     return a + b;
 
@@ -158,6 +149,15 @@ bool is_positive(int x):
         return false;
     else:
         return false;
+
+int main():
+    int x = 42;
+    float sum = add(x, 10);
+    bool pos = is_positive(x);
+    int total = 0;
+    for i in range(5):
+        total = total + i;
+    return total;
 ```
 
 This specification will evolve as Plasma develops. Feedback is welcome via GitHub issues.
