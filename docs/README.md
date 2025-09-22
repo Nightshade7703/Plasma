@@ -12,7 +12,7 @@ Plasma is a staticlly-typed variant of Python designed to combine Python's reada
 
 ## Example
 
-```pls
+```plasma
 int x = 42;
 
 float add(int a, int b):
