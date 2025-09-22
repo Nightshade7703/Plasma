@@ -1,0 +1,51 @@
+(* Program structure *)
+program = { statement } ;
+
+(* Statements *)
+statement = variable_declaration | function_declaration | if_statement | while_statement | for_statement | return_statement ;
+
+(* Variable declaration *)
+variable_declaration = type, identifier, "=", expression, ";" ;
+
+(* Function declaration *)
+function_declaration = return_type, identifier, "(", [ parameter_list ], ")", ":", INDENT, block, DEDENT ;
+return_type = "int" | "float" | "str" | "bool" | "void" ;
+parameter_list = parameter, { ",", parameter } ;
+parameter = type, identifier ;
+
+(* Block with indentation *)
+block = { statement } ;
+
+(* If statement *)
+if_statement = "if", expression, ":", INDENT, block, DEDENT,
+               { "elif", expression, ":", INDENT, block, DEDENT },
+               [ "else", ":", INDENT, block, DEDENT ] ;
+
+(* While loop *)
+while_statement = "while", expression, ":", INDENT, block, DEDENT ;
+
+(* For loop *)
+for_statement = "for", identifier, "in", "range", "(", expression, ")", ":", INDENT, block, DEDENT ;
+
+(* Return statement *)
+return_statement = "return", [ expression ], ";" ;
+
+(* Expressions *)
+expression = literal | identifier | binary_expression | function_call ;
+literal = integer | float | string | "true" | "false" ;
+binary_expression = expression, operator, expression ;
+operator = "+" | "-" | "*" | "/" | "==" | "!=" | "<" | ">" | "<=" | ">=" ;
+function_call = identifier, "(", [ expression, { ",", expression } ], ")" ;
+
+(* Terminals *)
+identifier = ( letter | "_" ), { letter | digit | "_" } ;
+integer = digit, { digit } ;
+float = digit, { digit }, ".", digit, { digit } ;
+string = '"', { character }, '"' ;
+character = letter | digit ;
+letter = "a".."z" | "A".."Z" ;
+digit = "0".."9" ;
+
+(* Indentation tokens *)
+INDENT = (* Represents an increase in indentation level, e.g., 4 spaces *);
+DEDENT = (* Represents a decrease in indentation level, matching a previous INDENT *);

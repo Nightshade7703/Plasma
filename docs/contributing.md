@@ -83,7 +83,7 @@ Thank you for your interest in contributing to Plasma! Plasma is a statically-ty
 
 ## Contribution Areas
 
-- **Parser**: Improve the `lark` grammar in `plasma/compiler/plasma_grammar.lark` or parsing logic in `parser.py`.
+- **Parser**: Improve the `lark` grammar in `plasma/compiler/plasma.ebnf` or parsing logic in `parser.py`.
 - **Type Checker**: Enhance type checking in `type_checker.py` (e.g., add support for new types).
 - **Code Generator**: Optimize Python code generation in `codegen.py`.
 - **CLI**: Add features to the command-line interface in `cli.py` (e.g., new commands, better error messages).
