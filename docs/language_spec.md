@@ -15,7 +15,7 @@ Variables are declared with C-style typing using the format `type name = express
 - **Syntax**: `type identifier = expression;`
 - **Supported Types**: `int`, `float`, `str`, `bool`
 - **Example**:
-    ```pls
+    ```plasma
     int x = 42;
     float pi = 3.14;
     str greeting = "Hello";
@@ -30,7 +30,7 @@ Functions are declared without the `def` keyword, using C-style typing for retur
 - **Supported Types**: `int`, `float`, `str`, `bool`, `void`
 - **Semantics**: Functions with `void` return type must not return a value or use a bare `return;`.
 - **Example**:
-    ```pls
+    ```plasma
     float add(int a, int b):
         return a + b;
     
@@ -47,7 +47,7 @@ Control structures use colons (`:`) to initiate indented blocks, similar to Pyth
 - **Syntax**: `if expression: block [elif expression: block]* [else: block]?`
 - **Semantics**: The `expression` must evaluate to a `bool`. The first true branch is executed; otherwise the `else` branch (if present) is executed.
 - **Example**:
-    ```pls
+    ```plasma
     bool is_positive(int x):
         if x > 0:
             return true;
@@ -62,7 +62,7 @@ Control structures use colons (`:`) to initiate indented blocks, similar to Pyth
 - **Syntax**: `while expression: block`
 - **Semantics**: The `expression` must evaluate to a `bool`. The block is executed repeatedly while the expression is true.
 - **Example**:
-    ```pls
+    ```plasma
     int sum_to(int n):
         int total = 0;
         while n > 0:
@@ -76,7 +76,7 @@ Control structures use colons (`:`) to initiate indented blocks, similar to Pyth
 - **Syntax**: `for identifier in range(expression): block`
 - **Semantics**: Iterates over a range of integers from 0 to `expression - 1`. The `expression` must evaluate to an `int`.
 - **Example**:
-    ```pls
+    ```plasma
     int sum_range(int n):
         int total = 0;
         for i in range(n):
@@ -94,7 +94,7 @@ Expressions include literals, variables, operators, and function calls.
   - Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`
 - **Function Calls**: `name(arg, ...)`
 - **Example**:
-    ```pls
+    ```plasma
     int x = 42 + 8 * 2;  // Evaluates to 58
     bool eq = x == 58;    // true
     float result = add(10, 20);  // Calls add function
@@ -105,7 +105,7 @@ Expressions include literals, variables, operators, and function calls.
 Plasma supports C-style single-line comments starting with `//`.
 
 - **Example**:
-    ```pls
+    ```plasma
     // This is a comment
     int x = 42;  // Initialize x
     ```
@@ -116,7 +116,7 @@ Plasma supports C-style single-line comments starting with `//`.
 - **Type Inference**: Not supported in the prototyping phase; all variables and functions require explicit type declarations.
 - **Block Scope**: Variables declared in a block are scoped to that block, similar to Python.
 - **Compilation**: In the prototyping phase, `.pls` files are compiled to `.py` files, stripping type declarations and converting function headers to use `def`. For example:
-    ```pls
+    ```plasma
     int x = 42;
 
     float add(int a, int b):
@@ -138,7 +138,7 @@ Plasma supports C-style single-line comments starting with `//`.
 
 ## Example Program
 
-```pls
+```plasma
 int main():
     int x = 42;
     float sum = add(x, 10);
