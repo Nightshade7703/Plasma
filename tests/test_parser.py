@@ -29,9 +29,19 @@ def test_valid_integer(parser):  # pylint: disable=redefined-outer-name
     assert tree['body']['type'] == 'integer_literal'
     assert tree['body']['value'] == 42
 
-def test_valid_string(parser):  # pylint: disable=redefined-outer-name
-    """Do strings pass as programs?"""
+def test_valid_string_double_quotes(parser):  # pylint: disable=redefined-outer-name
+    """Do double-quoted strings pass as programs?"""
     code = '"hello";'
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert tree['body']['type'] == 'string_literal'
+    assert tree['body']['value'] == 'hello'
+
+def test_valid_string_single_quotes(parser):  # pylint: disable=redefined-outer-name
+    """Do single-quoted strings pass as programs?"""
+    code = "'hello';"
     tree = parser.parse(code)
     pretty_print(tree)
     assert tree is not None

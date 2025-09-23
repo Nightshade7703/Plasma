@@ -7,9 +7,9 @@ class PlasmaTokenizer:
         self.code = code
         self.cursor = 0
 
-    def isEOF(self):
-        """Checks if the cursor has reached the end of the file."""
-        return self.cursor == len(self.code)
+    #def isEOF(self):
+    #    """Checks if the cursor has reached the end of the file."""
+    #    return self.cursor == len(self.code)
 
     def has_more_tokens(self):
         """Checks if the provided code still has tokens."""
@@ -45,6 +45,21 @@ class PlasmaTokenizer:
             self.cursor += 1  # Skip opening quote
             start_pos = self.cursor
             while self.cursor < len(self.code) and self.code[self.cursor] != '"':
+                string += self.code[self.cursor]
+                self.cursor += 1
+            if self.cursor >= len(self.code):
+                raise SyntaxError(f"Unterminated string starting at position {start_pos -1}")
+            string += self.code[self.cursor]  # Include closing quote in token
+            self.cursor += 1  # Skip closing quote
+            return {
+                'type': 'STR',
+                'value': string,
+            }
+        if char == "'":
+            string = ""
+            self.cursor += 1  # Skip opening quote
+            start_pos = self.cursor
+            while self.cursor < len(self.code) and self.code[self.cursor] != "'":
                 string += self.code[self.cursor]
                 self.cursor += 1
             if self.cursor >= len(self.code):

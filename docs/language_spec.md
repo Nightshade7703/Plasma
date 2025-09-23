@@ -19,6 +19,7 @@ Variables are declared with C-style typing using the format `type name = express
     int x = 42;
     float pi = 3.14;
     str greeting = "Hello";
+    str language = 'Plasma';
     bool is_active = true;
     ```
 
@@ -88,7 +89,7 @@ Control structures use colons (`:`) to initiate indented blocks, similar to Pyth
 
 Expressions include literals, variables, operators, and function calls.
 
-- **Literals**: `int` (e.g., `42`), `float` (e.g., `3.14`), `str` (e.g., `"hello"`), `bool` (`true`, `false`)
+- **Literals**: `int` (e.g., `42`), `float` (e.g., `3.14`), `str` (e.g., `"hello"`, `'plasma'`), `bool` (`true`, `false`)
 - **Operators**:
   - Arithmetic: `+`, `-`, `*`, `/`
   - Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`
