@@ -20,7 +20,7 @@ def pretty_print(dictionary: dict):
 
 # Test valid syntax
 def test_valid_integer(parser):  # pylint: disable=redefined-outer-name
-    """Do integers pass as programs?"""
+    """Do integers pass as statements?"""
     code = "42;"
     tree = parser.parse(code)
     pretty_print(tree)
@@ -30,7 +30,7 @@ def test_valid_integer(parser):  # pylint: disable=redefined-outer-name
     assert tree['body']['value'] == 42
 
 def test_valid_negative_integer(parser):  # pylint: disable=redefined-outer-name
-    """Do negative integers pass as programs?"""
+    """Do negative integers pass as statements?"""
     code = "-42;"
     tree = parser.parse(code)
     pretty_print(tree)
@@ -40,7 +40,7 @@ def test_valid_negative_integer(parser):  # pylint: disable=redefined-outer-name
     assert tree['body']['value'] == -42
 
 def test_valid_float(parser):  # pylint: disable=redefined-outer-name
-    """Do floats pass as programs?"""
+    """Do floats pass as statements?"""
     code = "3.14;"
     tree = parser.parse(code)
     pretty_print(tree)
@@ -50,7 +50,7 @@ def test_valid_float(parser):  # pylint: disable=redefined-outer-name
     assert tree['body']['value'] == 3.14
 
 def test_valid_negative_float(parser):  # pylint: disable=redefined-outer-name
-    """Do floats pass as programs?"""
+    """Do floats pass as statements?"""
     code = "-3.14;"
     tree = parser.parse(code)
     pretty_print(tree)
@@ -60,7 +60,7 @@ def test_valid_negative_float(parser):  # pylint: disable=redefined-outer-name
     assert tree['body']['value'] == -3.14
 
 def test_valid_string_double_quotes(parser):  # pylint: disable=redefined-outer-name
-    """Do double-quote strings pass as programs?"""
+    """Do double-quote strings pass as statements?"""
     code = '"hello";'
     tree = parser.parse(code)
     pretty_print(tree)
@@ -70,7 +70,7 @@ def test_valid_string_double_quotes(parser):  # pylint: disable=redefined-outer-
     assert tree['body']['value'] == 'hello'
 
 def test_valid_string_single_quotes(parser):  # pylint: disable=redefined-outer-name
-    """Do single-quote strings pass as programs?"""
+    """Do single-quote strings pass as statements?"""
     code = "'hello';"
     tree = parser.parse(code)
     pretty_print(tree)
@@ -80,7 +80,7 @@ def test_valid_string_single_quotes(parser):  # pylint: disable=redefined-outer-
     assert tree['body']['value'] == 'hello'
 
 def test_valid_string_with_space(parser):  # pylint: disable=redefined-outer-name
-    """Do strings with spaces pass as programs?"""
+    """Do strings with spaces pass as statements?"""
     code = '"Hello World";'
     tree = parser.parse(code)
     pretty_print(tree)
@@ -90,7 +90,7 @@ def test_valid_string_with_space(parser):  # pylint: disable=redefined-outer-nam
     assert tree['body']['value'] == 'Hello World'
 
 def test_valid_string_with_escaped_apostrophy(parser):  # pylint: disable=redefined-outer-name
-    """Do strings with escaped characters pass as programs?"""
+    """Do strings with escaped characters pass as statements?"""
     code = "'How\\'s it going?';"
     tree = parser.parse(code)
     pretty_print(tree)
@@ -100,7 +100,7 @@ def test_valid_string_with_escaped_apostrophy(parser):  # pylint: disable=redefi
     assert tree['body']['value'] == 'How\'s it going?'
 
 def test_valid_string_with_escaped_newline(parser):  # pylint: disable=redefined-outer-name
-    """Do strings with escaped characters pass as programs?"""
+    """Do strings with escaped characters pass as statements?"""
     code = '"Hello\\nWorld";'
     tree = parser.parse(code)
     pretty_print(tree)
@@ -130,7 +130,7 @@ def test_false_literal(parser):  # pylint: disable=redefined-outer-name
     assert tree['body']['value'] is False
 
 def test_valid_identifier(parser):  # pylint: disable=redefined-outer-name
-    """Do identifiers pass as programs?"""
+    """Do identifiers pass as statements?"""
     code = 'x;'
     tree = parser.parse(code)
     pretty_print(tree)
@@ -148,7 +148,7 @@ def test_valid_multi_char_identifier(parser):  # pylint: disable=redefined-outer
     assert tree['body']['value'] == 'abc'
 
 def test_valid_binary_expression(parser):  # pylint: disable=redefined-outer-name
-    """Do binary expressions pass as programs?"""
+    """Do binary expressions pass as statements?"""
     code = '42 + 8;'
     tree = parser.parse(code)
     pretty_print(tree)
@@ -162,7 +162,7 @@ def test_valid_binary_expression(parser):  # pylint: disable=redefined-outer-nam
     assert tree['body']['right']['value'] == 8
 
 def test_valid_mixed_binary_expression(parser):  # pylint: disable=redefined-outer-name
-    """Do mixed binary expressions pass as programs?"""
+    """Do mixed binary expressions pass as statements?"""
     code = 'x > 0;'
     tree = parser.parse(code)
     pretty_print(tree)
@@ -176,7 +176,7 @@ def test_valid_mixed_binary_expression(parser):  # pylint: disable=redefined-out
     assert tree['body']['right']['value'] == 0
 
 def test_valid_function_call(parser):  # pylint: disable=redefined-outer-name
-    """Do function calls pass as programs?"""
+    """Do function calls pass as statements?"""
     code = 'add(10, 20);'
     tree = parser.parse(code)
     pretty_print(tree)
@@ -191,7 +191,7 @@ def test_valid_function_call(parser):  # pylint: disable=redefined-outer-name
     assert tree['body']['arguments'][1]['value'] == 20
 
 def test_valid_function_call_no_args(parser):  # pylint: disable=redefined-outer-name
-    """Do function calls w/o arguments pass as programs?"""
+    """Do function calls w/o arguments pass as statements?"""
     code = 'foo();'
     tree = parser.parse(code)
     pretty_print(tree)
@@ -218,6 +218,19 @@ def test_valid_multiplicative_precedence(parser):  # pylint: disable=redefined-o
     assert tree['body']['right']['left']['value'] == 3
     assert tree['body']['right']['right']['type'] == 'integer_literal'
     assert tree['body']['right']['right']['value'] == 4
+
+def test_valid_variable_declaration(parser):  # pylint: disable=redefined-outer-name
+    """Do variable declarations pass as statements?"""
+    code = "int x = 42;"
+    tree = parser.parse(code)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert tree['body']['type'] == 'variable_declaration'
+    assert tree['body']['var_type'] == 'int'
+    assert tree['body']['identifier'] == 'x'
+    assert tree['body']['operator'] == '='
+    assert tree['body']['expression']['type'] == 'integer_literal'
+    assert tree['body']['expression']['value'] == 42
 
 # Test invalid syntax
 def test_invalid_float_multiple_decimal_points(parser):  # pylint: disable=redefined-outer-name

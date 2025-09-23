@@ -8,8 +8,8 @@ statement = variable_declaration | function_declaration | if_statement | while_s
 variable_declaration = type, identifier, "=", expression, ";" ;
 
 (* Function declaration *)
-function_declaration = return_type, identifier, "(", [ parameter_list ], ")", ":", INDENT, block, DEDENT ;
-return_type = "int" | "float" | "str" | "bool" | "void" ;
+function_declaration = type, identifier, "(", [ parameter_list ], ")", ":", INDENT, block, DEDENT ;
+type = "int" | "float" | "str" | "bool" | "void" ;
 parameter_list = parameter, { ",", parameter } ;
 parameter = type, identifier ;
 

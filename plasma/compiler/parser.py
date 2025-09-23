@@ -14,30 +14,32 @@ class PlasmaTokenizer:
             ('INT', r'-?\d+'),
             ('STR', r'"(?:[^"\\]|\\.)*"' + r'|\'(?:[^\'\\]|\\.)*\''),
             ('BOOL', r'true|false'),
-            ('OPERATOR', r'[+\-*/]|[=!<>]=|[<>]'),
+            ('TYPE', r'int|float|str|bool'),
+            ('OPERATOR', r'[+\-*/]|[=!<>]?=|[<>]'),
             ('IDENTIFIER', r'[a-zA-Z_][a-zA-Z0-9_]*'),
             ('LPAREN', r'\('),
             ('RPAREN', r'\)'),
             ('COMMA', r','),
             ('SEMI', r';'),
             ('WHITESPACE', r'\s+'),
+            ('COMMENT', r'//[^\n]*'),
         ]
         self.regex = re.compile(
             '|'.join(f'(?P<{name}>{pattern})' for name, pattern in self.token_patterns),
             re.ASCII,
         )
 
-    def _is_eof(self):
+    def is_eof(self):
         """Checks if the cursor has reached the end of the file."""
         return self.cursor >= len(self.code)
 
-    def _has_more_tokens(self):
+    def has_more_tokens(self):
         """Checks if the provided code still has tokens."""
         return self.cursor < len(self.code)
 
     def get_next_token(self):
         """Obtains the next token using regex."""
-        if not self._has_more_tokens():
+        if not self.has_more_tokens():
             return None
 
         print(f"Cursor: {self.cursor}, Code: {self.code[self.cursor]}")
@@ -60,9 +62,10 @@ class PlasmaTokenizer:
                     'type': name,
                     'value': value,
                 }
-            if value is not None and name == 'WHITESPACE':
+            if value is not None and name in ('WHITESPACE', 'COMMENT'):
                 self.cursor = match.end()
                 return self.get_next_token()  # Skip whitespace/comment and try next token
+
 
         raise SyntaxError(
             f"Invalid character at position {self.cursor}: '{self.code[self.cursor]}'")
@@ -74,7 +77,6 @@ class PlasmaParser:
         self.code = ''
         self.tokenizer = PlasmaTokenizer('')
         self.lookahead = None
-        self.lookahead_next = {}
 
     def parse(self, code:str):
         """Parses the code provided by the code parameter."""
@@ -84,33 +86,66 @@ class PlasmaParser:
         return self._program()
 
     def _program(self):
-        """Returns a program based on the rule program = expression ;"""
+        """Returns a program based on the rule program = statement ;"""
         node = {
             'type': 'program',
-            'body': self._expression(),
+            'body': self._statement(),
         }
         self._eat('SEMI')
         return node
 
-    def _expression(self):
-        """Returns an expression (addative_expression or function_call)."""
-        if self.lookahead is None:
-            raise SyntaxError("Unexpected end of input in expression")
+    def _statement(self):
+        """Returns a statement (variable_declaration, function_declaration, if_statement,
+        while_statement, for_statement, or return_statement)"""
+        # Check for data type or specific keyword
+        if self.lookahead['type'] == 'TYPE':
+            return self._variable_declaration()
+        return self._expression()
 
+    def _variable_declaration(self):
+        """Check if there's an open parenthesis after the identifier and returns a variable
+        declaration tree if not."""
+        decl_type = self._eat('TYPE')['value']
+        # Check for function declaration (type & IDENTIFIER followed by LPAREN)
+        if self.lookahead['type'] == 'IDENTIFIER' and (self._lookahead_next()
+                and self._lookahead_next()['type'] == 'LPAREN'):
+            #return self._function_declaration()
+            pass
+        if self.lookahead['type'] == 'IDENTIFIER':
+            if decl_type in ('int', 'float', 'str', 'bool'):
+                if self._lookahead_next() and (self._lookahead_next()['type'] == 'OPERATOR' and
+                        self._lookahead_next()['value'] == '='):
+                    identifier = self._eat('IDENTIFIER')['value']
+                    self._eat('OPERATOR')
+                    return {
+                        'type': 'variable_declaration',
+                        'var_type': decl_type,
+                        'identifier': identifier,
+                        'operator': '=',
+                        'expression': self._expression(),
+                    }
+                raise SyntaxError("Assignment operator not found. Expected: '='")
+            if decl_type == 'void':
+                raise SyntaxError("Keyword 'void' cannot be used to declare variables. " \
+                                  "Expected: int, float, str, or bool")
+        raise SyntaxError(f"Unexpected token after type '{decl_type}'. Expected: IDENTIFIER")
+
+    def _expression(self):
+        """Returns an expression (comparative_expression or function_call)."""
         # Check for function call (IDENTIFIER followed by LPAREN)
         if self.lookahead['type'] == 'IDENTIFIER' and (self._lookahead_next()
                 and self._lookahead_next()['type'] == 'LPAREN'):
             return self._function_call()
         # Otherwise, parse addative expression
-        return self._comparison_expression()
+        return self._comparative_expression()
 
-    def _comparison_expression(self):
+    def _comparative_expression(self):
         """Parses comparison expressions (==, !=, <, >, <=, >=) with low precedence."""
-        left = self._addative_expression()
+        left = self._additive_expression()
         while self.lookahead and (self.lookahead['type'] == 'OPERATOR' and
                 self.lookahead['value'] in ('==', '!=', '<', '>', '<=', '>=')):
             operator = self._eat('OPERATOR')['value']
-            right = self._addative_expression()
+            right = self._additive_expression()
             left = {
                 'type': 'binary_expression',
                 'operator': operator,
@@ -119,7 +154,7 @@ class PlasmaParser:
             }
         return left
 
-    def _addative_expression(self):
+    def _additive_expression(self):
         """Parses addative expressions (+, -) with middle precedence."""
         left = self._multiplicative_expression()
         while self.lookahead and (self.lookahead['type'] == 'OPERATOR' and
@@ -138,7 +173,7 @@ class PlasmaParser:
         """Parses multiplicative expressions (*, /) with higher precedence."""
         left = self._primary_expression()
         while self.lookahead and (self.lookahead['type'] == 'OPERATOR' and
-            self.lookahead['value'] in ('*', '-')):
+            self.lookahead['value'] in ('*', '/')):
             operator = self._eat('OPERATOR')['value']
             right = self._primary_expression()
             left = {
