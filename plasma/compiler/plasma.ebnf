@@ -32,7 +32,7 @@ return_statement = "return", [ expression ], ";" ;
 
 (* Expressions *)
 expression = literal | identifier | binary_expression | function_call ;
-literal = integer | float | string | "true" | "false" ;
+literal = integer | float | string | boolean ;
 binary_expression = expression, operator, expression ;
 operator = "+" | "-" | "*" | "/" | "==" | "!=" | "<" | ">" | "<=" | ">=" ;
 function_call = identifier, "(", [ expression, { ",", expression } ], ")" ;
@@ -41,8 +41,9 @@ function_call = identifier, "(", [ expression, { ",", expression } ], ")" ;
 identifier = ( letter | "_" ), { letter | digit | "_" } ;
 integer = digit, { digit } ;
 float = digit, { digit }, ".", digit, { digit } ;
-string = '"', { character }, '"' ;
-character = letter | digit ;
+string = ( '"', { string_char }, '"' ) | ( "'", { string_char }, "'" ) ;
+string_char = ? any character except '"' in double-quoted strings or "'" in single-quoted strings ? ;
+boolean = "true" | "false" ;
 letter = "a".."z" | "A".."Z" ;
 digit = "0".."9" ;
 
