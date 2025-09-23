@@ -27,17 +27,17 @@ class PlasmaTokenizer:
             re.ASCII,
         )
 
-    def is_eof(self):
+    def _is_eof(self):
         """Checks if the cursor has reached the end of the file."""
         return self.cursor >= len(self.code)
 
-    def has_more_tokens(self):
+    def _has_more_tokens(self):
         """Checks if the provided code still has tokens."""
         return self.cursor < len(self.code)
 
     def get_next_token(self):
         """Obtains the next token using regex."""
-        if not self.has_more_tokens():
+        if not self._has_more_tokens():
             return None
 
         print(f"Cursor: {self.cursor}, Code: {self.code[self.cursor]}")
@@ -81,18 +81,18 @@ class PlasmaParser:
         self.code = code
         self.tokenizer = PlasmaTokenizer(code)
         self.lookahead = self.tokenizer.get_next_token()
-        return self.program()
+        return self._program()
 
-    def program(self):
+    def _program(self):
         """Returns a program based on the rule program = expression ;"""
         node = {
             'type': 'program',
-            'body': self.expression(),
+            'body': self._expression(),
         }
-        self.eat('SEMI')
+        self._eat('SEMI')
         return node
 
-    def expression(self):
+    def _expression(self):
         """Returns an expression (addative_expression or function_call)."""
         if self.lookahead is None:
             raise SyntaxError("Unexpected end of input in expression")
@@ -100,17 +100,17 @@ class PlasmaParser:
         # Check for function call (IDENTIFIER followed by LPAREN)
         if self.lookahead['type'] == 'IDENTIFIER' and (self._lookahead_next()
                 and self._lookahead_next()['type'] == 'LPAREN'):
-            return self.function_call()
+            return self._function_call()
         # Otherwise, parse addative expression
-        return self.comparison_expression()
+        return self._comparison_expression()
 
-    def comparison_expression(self):
+    def _comparison_expression(self):
         """Parses comparison expressions (==, !=, <, >, <=, >=) with low precedence."""
-        left = self.addative_expression()
+        left = self._addative_expression()
         while self.lookahead and (self.lookahead['type'] == 'OPERATOR' and
                 self.lookahead['value'] in ('==', '!=', '<', '>', '<=', '>=')):
-            operator = self.eat('OPERATOR')['value']
-            right = self.addative_expression()
+            operator = self._eat('OPERATOR')['value']
+            right = self._addative_expression()
             left = {
                 'type': 'binary_expression',
                 'operator': operator,
@@ -119,13 +119,13 @@ class PlasmaParser:
             }
         return left
 
-    def addative_expression(self):
+    def _addative_expression(self):
         """Parses addative expressions (+, -) with middle precedence."""
-        left = self.multiplicative_expression()
+        left = self._multiplicative_expression()
         while self.lookahead and (self.lookahead['type'] == 'OPERATOR' and
                 self.lookahead['value'] in ('+', '-')):
-            operator = self.eat('OPERATOR')['value']
-            right = self.multiplicative_expression()
+            operator = self._eat('OPERATOR')['value']
+            right = self._multiplicative_expression()
             left = {
                 'type': 'binary_expression',
                 'operator': operator,
@@ -134,13 +134,13 @@ class PlasmaParser:
             }
         return left
 
-    def multiplicative_expression(self):
+    def _multiplicative_expression(self):
         """Parses multiplicative expressions (*, /) with higher precedence."""
-        left = self.primary_expression()
+        left = self._primary_expression()
         while self.lookahead and (self.lookahead['type'] == 'OPERATOR' and
             self.lookahead['value'] in ('*', '-')):
-            operator = self.eat('OPERATOR')['value']
-            right = self.primary_expression()
+            operator = self._eat('OPERATOR')['value']
+            right = self._primary_expression()
             left = {
                 'type': 'binary_expression',
                 'operator': operator,
@@ -149,33 +149,33 @@ class PlasmaParser:
             }
         return left
 
-    def primary_expression(self):
+    def _primary_expression(self):
         """Parses primary expressions (literal or identifier)."""
         if self.lookahead['type'] in ('INT', 'FLOAT', 'STR', 'BOOL'):
-            return self.literal()
+            return self._literal()
         if self.lookahead['type'] == 'IDENTIFIER':
-            return self.identifier()
+            return self._identifier()
         raise SyntaxError(f"Unexpected token type: {self.lookahead['type']}. " \
                           "Expected: INT, FLOAT, STR, BOOL, or IDENTIFIER")
 
-    def literal(self):
+    def _literal(self):
         """Returns a literal (int, float, str, or bool)."""
         if self.lookahead is None:
             raise SyntaxError("Unexpected end of input in literal")
         if self.lookahead['type'] == 'INT':
-            return self.integer()
+            return self._integer()
         if self.lookahead['type'] == 'FLOAT':
             return self._float()
         if self.lookahead['type'] == 'STR':
-            return self.string()
+            return self._string()
         if self.lookahead['type'] == 'BOOL':
-            return self.boolean()
+            return self._boolean()
         raise SyntaxError(f"Unexpected token type: {self.lookahead['type']}. " \
                           "Expected: INT, FLOAT, STR, BOOL")
 
-    def integer(self):
+    def _integer(self):
         """Returns an integer literal."""
-        token = self.eat('INT')
+        token = self._eat('INT')
         try:
             return {
                 'type': 'integer_literal',
@@ -186,7 +186,7 @@ class PlasmaParser:
 
     def _float(self):
         """Returns a float literal."""
-        token = self.eat('FLOAT')
+        token = self._eat('FLOAT')
         try:
             return {
                 'type': 'float_literal',
@@ -195,9 +195,9 @@ class PlasmaParser:
         except ValueError as exc:
             raise SyntaxError(f"Invalid float literal: '{token['value']}") from exc
 
-    def string(self):
+    def _string(self):
         """Returns a string literal."""
-        token = self.eat('STR')
+        token = self._eat('STR')
         raw_value = token['value'][1:-1]
         value = re.sub(r'\\([\'"\\nt])', lambda m: {
             '\\': '\\', 'n': '\n', 't': '\t', '"': '"', "'": "'"}[m.group(1)], raw_value)
@@ -206,33 +206,33 @@ class PlasmaParser:
             'value': value
         }
 
-    def boolean(self):
+    def _boolean(self):
         """Returns a true or false literal."""
-        token = self.eat('BOOL')
+        token = self._eat('BOOL')
         return {
             'type': 'boolean_literal',
             'value': token['value'] == 'true',  # Convert 'true'/'false' to True/False
         }
 
-    def identifier(self):
+    def _identifier(self):
         """Returns an identifier."""
-        token = self.eat('IDENTIFIER')
+        token = self._eat('IDENTIFIER')
         return {
             'type': 'identifier',
             'value': token['value'],
         }
 
-    def function_call(self):
+    def _function_call(self):
         """Returns a function call."""
-        name = self.eat('IDENTIFIER')['value']
-        self.eat('LPAREN')
+        name = self._eat('IDENTIFIER')['value']
+        self._eat('LPAREN')
         args = []
         if self.lookahead and self.lookahead['type'] != 'RPAREN':
-            args.append(self.expression())
+            args.append(self._expression())
             while self.lookahead and self.lookahead['type'] == 'COMMA':
-                self.eat('COMMA')
-                args.append(self.expression())
-        self.eat('RPAREN')
+                self._eat('COMMA')
+                args.append(self._expression())
+        self._eat('RPAREN')
         return {
             'type': 'function_call',
             'name': name,
@@ -246,7 +246,7 @@ class PlasmaParser:
         self.tokenizer.cursor = current_cursor
         return token
 
-    def eat(self, token_type):
+    def _eat(self, token_type):
         """Expects a token of a given type."""
         token = self.lookahead
         if token is None:
