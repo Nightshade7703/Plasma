@@ -29,6 +29,16 @@ def test_valid_integer(parser):  # pylint: disable=redefined-outer-name
     assert tree['body']['type'] == 'integer_literal'
     assert tree['body']['value'] == 42
 
+def test_valid_negative_integer(parser):  # pylint: disable=redefined-outer-name
+    """Do negative integers pass as programs?"""
+    code = "-42;"
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert tree['body']['type'] == 'integer_literal'
+    assert tree['body']['value'] == -42
+
 def test_valid_float(parser):  # pylint: disable=redefined-outer-name
     """Do floats pass as programs?"""
     code = "3.14;"
@@ -38,6 +48,16 @@ def test_valid_float(parser):  # pylint: disable=redefined-outer-name
     assert tree['type'] == 'program'
     assert tree['body']['type'] == 'float_literal'
     assert tree['body']['value'] == 3.14
+
+def test_valid_negative_float(parser):  # pylint: disable=redefined-outer-name
+    """Do floats pass as programs?"""
+    code = "-3.14;"
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert tree['body']['type'] == 'float_literal'
+    assert tree['body']['value'] == -3.14
 
 def test_valid_string_double_quotes(parser):  # pylint: disable=redefined-outer-name
     """Do double-quote strings pass as programs?"""
@@ -68,6 +88,26 @@ def test_valid_string_with_space(parser):  # pylint: disable=redefined-outer-nam
     assert tree['type'] == 'program'
     assert tree['body']['type'] == 'string_literal'
     assert tree['body']['value'] == 'Hello World'
+
+def test_valid_string_with_escaped_apostrophy(parser):  # pylint: disable=redefined-outer-name
+    """Do strings with escaped characters pass as programs?"""
+    code = "'How\\'s it going?';"
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert tree['body']['type'] == 'string_literal'
+    assert tree['body']['value'] == 'How\'s it going?'
+
+def test_valid_string_with_escaped_newline(parser):  # pylint: disable=redefined-outer-name
+    """Do strings with escaped characters pass as programs?"""
+    code = '"Hello\\nWorld";'
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert tree['body']['type'] == 'string_literal'
+    assert tree['body']['value'] == 'Hello\nWorld'
 
 def test_true_literal(parser):  # pylint: disable=redefined-outer-name
     """Does true; pass as a program?"""

@@ -10,13 +10,12 @@ class PlasmaTokenizer:
         self.cursor = 0
         # Regex patterns for tokens
         self.token_patterns = [
-            ('FLOAT', r'\d+\.\d+'),             # float: digit { digit } . digit { digit }
-            ('INT', r'\d+'),                    # integer: digit { digit }
-            ('STR', r'"[^"]*"|\'[^\']*\''),     # string: " { character } " (letter | digit)
-            ('BOOL', r'true|false'),            # boolean: true | false
-            ('SEMI', r';'),                     # semicolon
-            ('WHITESPACE', r'\s+'),             # whitespace (to skip)
-            ('COMMENT', r'//[^\n]*'),           # C-style comments (to skip)
+            ('FLOAT', r'-?\d+\.\d+'),
+            ('INT', r'-?\d+'),
+            ('STR', r'"(?:[^"\\]|\\.)*"' + r'|\'(?:[^\'\\]|\\.)*\''),
+            ('BOOL', r'true|false'),
+            ('SEMI', r';'),
+            ('WHITESPACE', r'\s+'),
         ]
         # Compile regex with all patterns
         self.regex = re.compile(
@@ -118,9 +117,12 @@ class PlasmaParser:
     def string(self):
         """Returns a string literal."""
         token = self.eat('STR')
+        raw_value = token['value'][1:-1]
+        value = re.sub(r'\\([\'"\\nt])', lambda m: {
+            '\\': '\\', 'n': '\n', 't': '\t', '"': '"', "'": "'"}[m.group(1)], raw_value)
         return {
             'type': 'string_literal',
-            'value': token['value'][1:-1],  # Strip quotes
+            'value': value
         }
 
     def boolean(self):
