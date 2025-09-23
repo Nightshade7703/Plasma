@@ -112,6 +112,7 @@ Plasma supports C-style single-line comments starting with `//`.
 
 ## Semantics
 
+- **Variable and Function Names**: Variable and function names must begin with either a letter or an underscore (`_`). Any subsequent characters can be letters, digits, or underscores. A variable/function name cannot start with a digit and the name must not include any special characters aside from underscores. For example, `int _var2 = 42;` is a valid variable, but `int 1_count = 0;` is not.
 - **Static Typing**: Types are checked at compile time. Type mismatches (e.g., `int x = "hello";`) result in compilation errors.
 - **Type Inference**: Not supported in the prototyping phase; all variables and functions require explicit type declarations.
 - **Block Scope**: Variables declared in a block are scoped to that block, similar to Python.
