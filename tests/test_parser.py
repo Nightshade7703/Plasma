@@ -175,6 +175,50 @@ def test_valid_mixed_binary_expression(parser):  # pylint: disable=redefined-out
     assert tree['body']['right']['type'] == 'integer_literal'
     assert tree['body']['right']['value'] == 0
 
+def test_valid_function_call(parser):  # pylint: disable=redefined-outer-name
+    """Do function calls pass as programs?"""
+    code = 'add(10, 20);'
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert tree['body']['type'] == 'function_call'
+    assert tree['body']['name'] == 'add'
+    assert len(tree['body']['arguments']) == 2
+    assert tree['body']['arguments'][0]['type'] == 'integer_literal'
+    assert tree['body']['arguments'][0]['value'] == 10
+    assert tree['body']['arguments'][1]['type'] == 'integer_literal'
+    assert tree['body']['arguments'][1]['value'] == 20
+
+def test_valid_function_call_no_args(parser):  # pylint: disable=redefined-outer-name
+    """Do function calls w/o arguments pass as programs?"""
+    code = 'foo();'
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert tree['body']['type'] == 'function_call'
+    assert tree['body']['name'] == 'foo'
+    assert len(tree['body']['arguments']) == 0
+
+def test_valid_multiplicative_precedence(parser):  # pylint: disable=redefined-outer-name
+    """Is the order of operations applied properly?"""
+    code = '2 + 3 * 4;'
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert tree['body']['type'] == 'binary_expression'
+    assert tree['body']['operator'] == '+'
+    assert tree['body']['left']['type'] == 'integer_literal'
+    assert tree['body']['left']['value'] == 2
+    assert tree['body']['right']['type'] == 'binary_expression'
+    assert tree['body']['right']['operator'] == '*'
+    assert tree['body']['right']['left']['type'] == 'integer_literal'
+    assert tree['body']['right']['left']['value'] == 3
+    assert tree['body']['right']['right']['type'] == 'integer_literal'
+    assert tree['body']['right']['right']['value'] == 4
+
 # Test invalid syntax
 def test_invalid_float_multiple_decimal_points(parser):  # pylint: disable=redefined-outer-name
     """Can parser detect invalid floats with multiple decimal points?"""

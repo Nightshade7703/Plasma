@@ -98,17 +98,32 @@ class PlasmaParser:
             raise SyntaxError("Unexpected end of input in expression")
 
         # Check for function call (IDENTIFIER followed by LPAREN)
-        if self.lookahead['type'] == 'IDENTIFIER' and (self.lookahead_next()
-                and self.lookahead_next()['type'] == 'LPAREN'):
+        if self.lookahead['type'] == 'IDENTIFIER' and (self._lookahead_next()
+                and self._lookahead_next()['type'] == 'LPAREN'):
             return self.function_call()
         # Otherwise, parse addative expression
-        return self.addative_expression()
+        return self.comparison_expression()
+
+    def comparison_expression(self):
+        """Parses comparison expressions (==, !=, <, >, <=, >=) with low precedence."""
+        left = self.addative_expression()
+        while self.lookahead and (self.lookahead['type'] == 'OPERATOR' and
+                self.lookahead['value'] in ('==', '!=', '<', '>', '<=', '>=')):
+            operator = self.eat('OPERATOR')['value']
+            right = self.addative_expression()
+            left = {
+                'type': 'binary_expression',
+                'operator': operator,
+                'left': left,
+                'right': right,
+            }
+        return left
 
     def addative_expression(self):
-        """Parses addative expressions (+, -) with lower precedence."""
+        """Parses addative expressions (+, -) with middle precedence."""
         left = self.multiplicative_expression()
         while self.lookahead and (self.lookahead['type'] == 'OPERATOR' and
-            self.lookahead['value'] in ('+', '-')):
+                self.lookahead['value'] in ('+', '-')):
             operator = self.eat('OPERATOR')['value']
             right = self.multiplicative_expression()
             left = {
@@ -138,7 +153,7 @@ class PlasmaParser:
         """Parses primary expressions (literal or identifier)."""
         if self.lookahead['type'] in ('INT', 'FLOAT', 'STR', 'BOOL'):
             return self.literal()
-        if self.lookahead['type'] == 'identifier':
+        if self.lookahead['type'] == 'IDENTIFIER':
             return self.identifier()
         raise SyntaxError(f"Unexpected token type: {self.lookahead['type']}. " \
                           "Expected: INT, FLOAT, STR, BOOL, or IDENTIFIER")
@@ -224,8 +239,7 @@ class PlasmaParser:
             'arguments': args,
         }
 
-    # TODO fix 'method not callable' error
-    def lookahead_next(self):
+    def _lookahead_next(self):
         """Returns the next token without consuming it."""
         current_cursor = self.tokenizer.cursor
         token = self.tokenizer.get_next_token()
