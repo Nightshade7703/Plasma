@@ -14,12 +14,17 @@ class PlasmaTokenizer:
             ('INT', r'-?\d+'),
             ('STR', r'"(?:[^"\\]|\\.)*"' + r'|\'(?:[^\'\\]|\\.)*\''),
             ('BOOL', r'true|false'),
+            ('OPERATOR', r'[+\-*/]|[=!<>]=|[<>]'),
+            ('IDENTIFIER', r'[a-zA-Z_][a-zA-Z0-9_]*'),
+            ('LPAREN', r'\('),
+            ('RPAREN', r'\)'),
+            ('COMMA', r','),
             ('SEMI', r';'),
             ('WHITESPACE', r'\s+'),
         ]
-        # Compile regex with all patterns
         self.regex = re.compile(
-            '|'.join(f'(?P<{name}>{pattern})' for name, pattern in self.token_patterns)
+            '|'.join(f'(?P<{name}>{pattern})' for name, pattern in self.token_patterns),
+            re.ASCII,
         )
 
     def is_eof(self):
@@ -35,16 +40,21 @@ class PlasmaTokenizer:
         if not self.has_more_tokens():
             return None
 
-        # Find the next match starting from cursor
+        print(f"Cursor: {self.cursor}, Code: {self.code[self.cursor]}")
         match = self.regex.match(self.code, self.cursor)
+        print(f"Match: {match.groupdict() if match else 'None'}")
+
         if not match:
             raise SyntaxError(
-                f"Invalid character at position {self.cursor}: '{self.code[self.cursor]}'"
-            )
+                f"Invalid character at position {self.cursor}: '{self.code[self.cursor]}'")
 
-        # Get the matched token
         for name, value in match.groupdict().items():
             if value is not None and name != 'WHITESPACE':
+                if name == 'IDENTIFIER' and value in {'true', 'false', 'int', 'float', 'str',
+                                                      'bool', 'void', 'if', 'elif', 'else',
+                                                      'while', 'for', 'in', 'range', 'return'}:
+                    raise SyntaxError(f"Unexpected keyword '{value}' cannot be used as an " \
+                                      f"identifier at position {self.cursor - len(value)}")
                 self.cursor = match.end()
                 return {
                     'type': name,
@@ -52,7 +62,10 @@ class PlasmaTokenizer:
                 }
             if value is not None and name == 'WHITESPACE':
                 self.cursor = match.end()
-                return self.get_next_token()  # Skip whitespace and try next token
+                return self.get_next_token()  # Skip whitespace/comment and try next token
+
+        raise SyntaxError(
+            f"Invalid character at position {self.cursor}: '{self.code[self.cursor]}'")
 
 class PlasmaParser:
     """Class for compiler parsing logic."""
@@ -61,6 +74,7 @@ class PlasmaParser:
         self.code = ''
         self.tokenizer = PlasmaTokenizer('')
         self.lookahead = None
+        self.lookahead_next = {}
 
     def parse(self, code:str):
         """Parses the code provided by the code parameter."""
@@ -70,16 +84,67 @@ class PlasmaParser:
         return self.program()
 
     def program(self):
-        """Returns a program based on the rule program = literal ;"""
+        """Returns a program based on the rule program = expression ;"""
         node = {
             'type': 'program',
-            'body': self.literal(),
+            'body': self.expression(),
         }
         self.eat('SEMI')
         return node
 
+    def expression(self):
+        """Returns an expression (addative_expression or function_call)."""
+        if self.lookahead is None:
+            raise SyntaxError("Unexpected end of input in expression")
+
+        # Check for function call (IDENTIFIER followed by LPAREN)
+        if self.lookahead['type'] == 'IDENTIFIER' and (self.lookahead_next()
+                and self.lookahead_next()['type'] == 'LPAREN'):
+            return self.function_call()
+        # Otherwise, parse addative expression
+        return self.addative_expression()
+
+    def addative_expression(self):
+        """Parses addative expressions (+, -) with lower precedence."""
+        left = self.multiplicative_expression()
+        while self.lookahead and (self.lookahead['type'] == 'OPERATOR' and
+            self.lookahead['value'] in ('+', '-')):
+            operator = self.eat('OPERATOR')['value']
+            right = self.multiplicative_expression()
+            left = {
+                'type': 'binary_expression',
+                'operator': operator,
+                'left': left,
+                'right': right,
+            }
+        return left
+
+    def multiplicative_expression(self):
+        """Parses multiplicative expressions (*, /) with higher precedence."""
+        left = self.primary_expression()
+        while self.lookahead and (self.lookahead['type'] == 'OPERATOR' and
+            self.lookahead['value'] in ('*', '-')):
+            operator = self.eat('OPERATOR')['value']
+            right = self.primary_expression()
+            left = {
+                'type': 'binary_expression',
+                'operator': operator,
+                'left': left,
+                'right': right,
+            }
+        return left
+
+    def primary_expression(self):
+        """Parses primary expressions (literal or identifier)."""
+        if self.lookahead['type'] in ('INT', 'FLOAT', 'STR', 'BOOL'):
+            return self.literal()
+        if self.lookahead['type'] == 'identifier':
+            return self.identifier()
+        raise SyntaxError(f"Unexpected token type: {self.lookahead['type']}. " \
+                          "Expected: INT, FLOAT, STR, BOOL, or IDENTIFIER")
+
     def literal(self):
-        """Returns a literal of type int, float, str, or bool."""
+        """Returns a literal (int, float, str, or bool)."""
         if self.lookahead is None:
             raise SyntaxError("Unexpected end of input in literal")
         if self.lookahead['type'] == 'INT':
@@ -90,7 +155,8 @@ class PlasmaParser:
             return self.string()
         if self.lookahead['type'] == 'BOOL':
             return self.boolean()
-        raise SyntaxError(f"Unexpected token type: {self.lookahead['type']}. Expected: INT or STR")
+        raise SyntaxError(f"Unexpected token type: {self.lookahead['type']}. " \
+                          "Expected: INT, FLOAT, STR, BOOL")
 
     def integer(self):
         """Returns an integer literal."""
@@ -132,6 +198,39 @@ class PlasmaParser:
             'type': 'boolean_literal',
             'value': token['value'] == 'true',  # Convert 'true'/'false' to True/False
         }
+
+    def identifier(self):
+        """Returns an identifier."""
+        token = self.eat('IDENTIFIER')
+        return {
+            'type': 'identifier',
+            'value': token['value'],
+        }
+
+    def function_call(self):
+        """Returns a function call."""
+        name = self.eat('IDENTIFIER')['value']
+        self.eat('LPAREN')
+        args = []
+        if self.lookahead and self.lookahead['type'] != 'RPAREN':
+            args.append(self.expression())
+            while self.lookahead and self.lookahead['type'] == 'COMMA':
+                self.eat('COMMA')
+                args.append(self.expression())
+        self.eat('RPAREN')
+        return {
+            'type': 'function_call',
+            'name': name,
+            'arguments': args,
+        }
+
+    # TODO fix 'method not callable' error
+    def lookahead_next(self):
+        """Returns the next token without consuming it."""
+        current_cursor = self.tokenizer.cursor
+        token = self.tokenizer.get_next_token()
+        self.tokenizer.cursor = current_cursor
+        return token
 
     def eat(self, token_type):
         """Expects a token of a given type."""

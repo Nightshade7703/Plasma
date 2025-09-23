@@ -129,19 +129,53 @@ def test_false_literal(parser):  # pylint: disable=redefined-outer-name
     assert tree['body']['type'] == 'boolean_literal'
     assert tree['body']['value'] is False
 
+def test_valid_identifier(parser):  # pylint: disable=redefined-outer-name
+    """Do identifiers pass as programs?"""
+    code = 'x;'
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert tree['body']['type'] == 'identifier'
+    assert tree['body']['value'] == 'x'
+
+def test_valid_multi_char_identifier(parser):  # pylint: disable=redefined-outer-name
+    """Does a multi character identifier pass as a program?"""
+    tree = parser.parse('abc;')
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert tree['body']['type'] == 'identifier'
+    assert tree['body']['value'] == 'abc'
+
+def test_valid_binary_expression(parser):  # pylint: disable=redefined-outer-name
+    """Do binary expressions pass as programs?"""
+    code = '42 + 8;'
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert tree['body']['type'] == 'binary_expression'
+    assert tree['body']['operator'] == '+'
+    assert tree['body']['left']['type'] == 'integer_literal'
+    assert tree['body']['left']['value'] == 42
+    assert tree['body']['right']['type'] == 'integer_literal'
+    assert tree['body']['right']['value'] == 8
+
+def test_valid_mixed_binary_expression(parser):  # pylint: disable=redefined-outer-name
+    """Do mixed binary expressions pass as programs?"""
+    code = 'x > 0;'
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert tree['body']['type'] == 'binary_expression'
+    assert tree['body']['operator'] == '>'
+    assert tree['body']['left']['type'] == 'identifier'
+    assert tree['body']['left']['value'] == 'x'
+    assert tree['body']['right']['type'] == 'integer_literal'
+    assert tree['body']['right']['value'] == 0
+
 # Test invalid syntax
-def test_invalid_integer_non_digit(parser):  # pylint: disable=redefined-outer-name
-    """Can parser detect invalid integers?"""
-    code = "abc;"
-    with pytest.raises(SyntaxError, match=r"Invalid character at position 0: 'a'"):
-        parser.parse(code)
-
-def test_invalid_integer_mixed(parser):  # pylint: disable=redefined-outer-name
-    """Can parser detect mixed characters?"""
-    code = "4a;"
-    with pytest.raises(SyntaxError, match=r"Invalid character at position 1: 'a'"):
-        parser.parse(code)
-
 def test_invalid_float_multiple_decimal_points(parser):  # pylint: disable=redefined-outer-name
     """Can parser detect invalid floats with multiple decimal points?"""
     code = "3.1.4;"
