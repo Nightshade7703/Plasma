@@ -15,12 +15,16 @@ class PlasmaTokenizer:
             ('STR', r'"(?:[^"\\]|\\.)*"' + r'|\'(?:[^\'\\]|\\.)*\''),
             ('BOOL', r'true|false'),
             ('TYPE', r'int|float|str|bool'),
+            ('RETURN', r'return'),
             ('OPERATOR', r'[+\-*/]|[=!<>]?=|[<>]'),
             ('IDENTIFIER', r'[a-zA-Z_][a-zA-Z0-9_]*'),
             ('LPAREN', r'\('),
             ('RPAREN', r'\)'),
             ('COMMA', r','),
+            ('COLON', r':'),
             ('SEMI', r';'),
+            ('INDENT', r'^'),
+            ('DEDENT', r'^\s{4}'),
             ('WHITESPACE', r'\s+'),
             ('COMMENT', r'//[^\n]*'),
         ]
@@ -42,9 +46,7 @@ class PlasmaTokenizer:
         if not self.has_more_tokens():
             return None
 
-        print(f"Cursor: {self.cursor}, Code: {self.code[self.cursor]}")
         match = self.regex.match(self.code, self.cursor)
-        print(f"Match: {match.groupdict() if match else 'None'}")
 
         if not match:
             raise SyntaxError(
