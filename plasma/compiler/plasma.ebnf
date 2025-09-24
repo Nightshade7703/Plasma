@@ -47,6 +47,7 @@ escape = '\', ( '"' | "'" | '\' | 'n' | 't' ) ;
 boolean = "true" | "false" ;
 letter = "a".."z" | "A".."Z" ;
 digit = "0".."9" ;
+comment = "//", { ? any character except newline ?}, newline ;
 
 (* Indentation tokens *)
 INDENT = (* Represents an increase in indentation level, e.g., 4 spaces *);
