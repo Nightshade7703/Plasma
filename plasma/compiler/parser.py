@@ -8,8 +8,8 @@ class PlasmaTokenizer:
     def __init__(self, code: str):
         self.code = code
         self.cursor = 0
-        self.indent_stack = [0]
-        # Regex patterns for tokens
+        self.indent_levels = [0]
+        self.line_start = True
         self.token_patterns = [
             ('FLOAT', r'-?\d+\.\d+'),
             ('INT', r'-?\d+'),
@@ -24,8 +24,7 @@ class PlasmaTokenizer:
             ('COMMA', r','),
             ('COLON', r':'),
             ('SEMI', r';'),
-            ('NEWLINE', r'\n'),
-            ('WHITESPACE', r'\s+'),
+            ('WHITESPACE', r'[ \t]*\n[ \t]*|[ \t]+'),
             ('COMMENT', r'//[^\n]*'),
         ]
         self.regex = re.compile(
@@ -40,22 +39,61 @@ class PlasmaTokenizer:
     def get_next_token(self):
         """Obtains the next token using regex."""
         if not self.has_more_tokens():
+            if len(self.indent_levels) > 1:
+                self.indent_levels.pop()
+                return {'type': 'DEDENT', 'value': ''}
             return None
 
-        match = self.regex.match(self.code, self.cursor)
+        if self.line_start:  # TODO fix indent/dedent detection
+            indent_match = re.match(r'^[ \t]*', self.code[self.cursor:])
+            if indent_match:
+                indent_str = indent_match.group(0)
+                indent_size = len(indent_str.replace('\t', '    '))
+                self.cursor += len(indent_match.group(0))
+                if self.cursor < len(self.code) and self.code[self.cursor] == '\n':
+                    self.line_start = True
+                    self.cursor += 1
+                    return self.get_next_token()
+                if self.cursor < len(self.code) and self.code[self.cursor:self.cursor+2] == '//':
+                    comment_match = re.match(r'//[^\n]*\n?', self.code[self.cursor:])
+                    if comment_match:
+                        self.cursor += len(comment_match.group(0))
+                        self.line_start = True
+                        return self.get_next_token()
+                current_level = self.indent_levels[-1]
+                if indent_size > current_level:
+                    if indent_size % 4 != 0:
+                        raise SyntaxError(f"Inconsistent indent at position {self.cursor}: not " \
+                                          "multiple of 4 spaces")
+                    self.indent_levels.append(indent_size)
+                    self.line_start = False
+                    return {'type': 'INDENT', 'value': ''}
+                while indent_size < current_level and len(self.indent_levels) > 1:
+                    self.indent_levels.pop()
+                    current_level = self.indent_levels[-1]
+                    if indent_size < current_level:
+                        raise SyntaxError(f"Inconsistent dedent at position {self.cursor}: too " \
+                                          "few spaces")
+                    if indent_size == current_level:
+                        return {'type': 'DEDENT', 'value': ''}
+                self.line_start = False
 
+        match = self.regex.match(self.code, self.cursor)
         if not match:
             raise SyntaxError(
                 f"Invalid character at position {self.cursor}: '{self.code[self.cursor]}'")
 
         for name, value in match.groupdict().items():
             if value is not None:
-                if name in ('WHITESPACE', 'COMMENT'):
+                if name == 'WHITESPACE':
                     self.cursor = match.end()
+                    if '\n' in value:
+                        self.line_start = True
                     return self.get_next_token()
-                if name == 'NEWLINE':
+                if name == 'COMMENT':
                     self.cursor = match.end()
-                    return self._handle_indentation()
+                    self.line_start = True
+                    return self.get_next_token()
                 if name == 'IDENTIFIER' and value in {'true', 'false', 'int', 'float', 'str',
                                                       'bool', 'void', 'if', 'elif', 'else',
                                                       'while', 'for', 'in', 'range', 'return'}:
@@ -69,33 +107,6 @@ class PlasmaTokenizer:
 
         raise SyntaxError(
             f"Invalid character at position {self.cursor}: '{self.code[self.cursor]}'")
-
-    def _handle_indentation(self):
-        """Handles INDENT/DEDENT after a newline."""
-        # Measure indentation (spaces after newline)
-        indent_match = re.match(r'[ \t]*', self.code[self.cursor:])
-        indent_size = len(indent_match.group(0))
-        self.cursor += indent_size
-
-        # Skip blank lines or lines with only comments
-        if re.match(r'//[^\n]*', self.code[self.cursor:]) or self.cursor >= len(self.code):
-            return self.get_next_token()
-
-        current_indent = self.indent_stack[-1]
-
-        if indent_size > current_indent:
-            self.indent_stack.append(indent_size)
-            return {'type': 'INDENT', 'value': ''}
-        if indent_size < current_indent:
-            dedents = []
-            while indent_size < self.indent_stack[-1]:
-                self.indent_stack.pop()
-                dedents.append({'type': 'DEDENT', 'value': ''})
-            if indent_size != self.indent_stack[-1]:
-                raise SyntaxError(f"Inconsistent indentation at position {self.cursor}")
-            if dedents:
-                return dedents[0]
-        return self.get_next_token()  # No change, continue
 
 class PlasmaParser:
     """Class for compiler parsing logic."""
@@ -142,7 +153,6 @@ class PlasmaParser:
     def _variable_declaration(self):
         """Checks for a function declaration and parses a variable declaration if no LPAREN."""
         decl_type = self._eat('TYPE')['value']
-        # Check for function declaration (type & IDENTIFIER followed by LPAREN)
         if self.lookahead['type'] == 'IDENTIFIER' and (self._lookahead_next()
                 and self._lookahead_next()['type'] == 'LPAREN'):
             return self._function_declaration(decl_type)
@@ -166,7 +176,7 @@ class PlasmaParser:
         raise SyntaxError(f"Unexpected token after type '{decl_type}'. Expected: IDENTIFIER")
 
     def _function_declaration(self, return_type):
-        """Parses a function declaration with parameters if applicable."""
+        """Parses a function declaration."""
         name = self._eat('IDENTIFIER')['value']
         self._eat('LPAREN')
         params = []
@@ -201,8 +211,11 @@ class PlasmaParser:
     def _return_statement(self):
         """Parses a return statement."""
         self._eat('RETURN')
-        if self.lookahead['type'] == 'SEMI':
-            return {'type': 'return_statement', 'expression': self._expression()}
+        expr = self._expression() if self.lookahead and self.lookahead['type'] != 'SEMI' else None
+        return {
+            'type': 'return_statement',
+            'expression': expr,
+        }
 
     def _expression(self):
         """Parses an expression (comparative_expression or function_call)."""

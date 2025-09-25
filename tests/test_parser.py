@@ -335,7 +335,6 @@ int add(int a, int b):
     assert tree['body'][0]['body'][0]['expression']['right']['type'] == 'identifier'
     assert tree['body'][0]['body'][0]['expression']['right']['value'] == 'b'
 
-
 # Test invalid syntax
 def test_invalid_float_multiple_decimal_points(parser):  # pylint: disable=redefined-outer-name
     """Can parser detect invalid floats with multiple decimal points?"""
