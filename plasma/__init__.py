@@ -2,7 +2,7 @@
 Plasma: A statically-typed Python variant with C-style typing and colon-based blocks.
 Compiles .pls files to .py files in the prototyping phase.
 """
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from .compiler.cli import main as compile_plasma
 

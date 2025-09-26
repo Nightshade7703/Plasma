@@ -17,6 +17,7 @@ class PlasmaTokenizer:
             ('STR', r'"(?:[^"\\]|\\.)*"' + r'|\'(?:[^\'\\]|\\.)*\''),
             ('BOOL', r'true|false'),
             ('TYPE', r'int|float|str|bool|void'),
+            ('IF', r'if'),
             ('RETURN', r'return'),
             ('OPERATOR', r'[+\-*/]|[=!<>]?=|[<>]'),
             ('IDENTIFIER', r'[a-zA-Z_][a-zA-Z0-9_]*'),
@@ -162,6 +163,8 @@ class PlasmaParser:
         # Check for data type or specific keyword
         if self.lookahead['type'] == 'TYPE':
             return self._variable_declaration()
+        if self.lookahead['type'] == 'IF':
+            return self._if_statement()
         if self.lookahead['type'] == 'RETURN':
             return self._return_statement()
         return self._expression()
@@ -224,6 +227,36 @@ class PlasmaParser:
         name = self._eat('IDENTIFIER')['value']
         return {'type': 'parameter', 'param_type': param_type, 'name': name}
 
+    def _if_statement(self):
+        """Parses an if statement"""
+        self._eat('IF')
+        expression = self._expression()
+        body = []
+        if (expression['type'] == 'binary_expression' and expression['operator'] in
+                ('==', '!=', '<', '>', '<=', '>=')):
+            self._eat('COLON')
+            self._eat('INDENT')
+            while self.lookahead and self.lookahead['type'] != 'DEDENT':
+                body.append(self._statement())
+                if self.lookahead and self.lookahead['type'] == 'SEMI':
+                    self._eat('SEMI')
+            self._eat('DEDENT')
+        elif expression['type'] == 'boolean_literal':
+            self._eat('COLON')
+            self._eat('INDENT')
+            while self.lookahead and self.lookahead['type'] != 'DEDENT':
+                body.append(self._statement())
+                if self.lookahead and self.lookahead['type'] == 'SEMI':
+                    self._eat('SEMI')
+            self._eat('DEDENT')
+        else:
+            raise SyntaxError("Expression must evaluate to bool")
+        return {
+            'type': 'if_statement',
+            'expression': expression,
+            'body': body,
+        }
+
     def _return_statement(self):
         """Parses a return statement."""
         self._eat('RETURN')
@@ -239,7 +272,7 @@ class PlasmaParser:
         if self.lookahead['type'] == 'IDENTIFIER' and (self._lookahead_next()
                 and self._lookahead_next()['type'] == 'LPAREN'):
             return self._function_call()
-        # Otherwise, parse addative expression
+        # Otherwise, parse comparative expression
         return self._comparative_expression()
 
     def _comparative_expression(self):
@@ -291,6 +324,9 @@ class PlasmaParser:
         """Parses primary expressions (literal or identifier)."""
         if self.lookahead['type'] in ('INT', 'FLOAT', 'STR', 'BOOL'):
             return self._literal()
+        if (self.lookahead['type'] == 'IDENTIFIER' and self._lookahead_next()
+                and self._lookahead_next()['type'] == 'LPAREN'):
+            return self._function_call()
         if self.lookahead['type'] == 'IDENTIFIER':
             return self._identifier()
         raise SyntaxError(f"Unexpected token type: {self.lookahead['type']}. " \

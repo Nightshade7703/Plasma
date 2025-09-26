@@ -335,6 +335,62 @@ int add(int a, int b):
     assert tree['body'][0]['body'][0]['expression']['right']['type'] == 'identifier'
     assert tree['body'][0]['body'][0]['expression']['right']['value'] == 'b'
 
+def test_valid_if_statement(parser):  # pylint: disable=redefined-outer-name
+    """Do if statements pass as statements?"""
+    code = """
+bool factorial(int n):
+    if n <= 1:
+        return 1;
+    if n > 1:
+        return n * factorial(n - 1)
+"""
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert len(tree['body']) == 1
+    assert tree['body'][0]['type'] == 'function_declaration'
+    assert tree['body'][0]['return_type'] == 'bool'
+    assert tree['body'][0]['name'] == 'factorial'
+    assert len(tree['body'][0]['parameters']) == 1
+    assert tree['body'][0]['parameters'][0]['type'] == 'parameter'
+    assert tree['body'][0]['parameters'][0]['param_type'] == 'int'
+    assert tree['body'][0]['parameters'][0]['name'] == 'n'
+    assert len(tree['body'][0]['body']) == 2
+    assert tree['body'][0]['body'][0]['type'] == 'if_statement'
+    assert tree['body'][0]['body'][0]['expression']['type'] == 'binary_expression'
+    assert tree['body'][0]['body'][0]['expression']['operator'] == '<='
+    assert tree['body'][0]['body'][0]['expression']['left']['type'] == 'identifier'
+    assert tree['body'][0]['body'][0]['expression']['left']['value'] == 'n'
+    assert tree['body'][0]['body'][0]['expression']['right']['type'] == 'integer_literal'
+    assert tree['body'][0]['body'][0]['expression']['right']['value'] == 1
+    assert len(tree['body'][0]['body'][0]['body']) == 1
+    assert tree['body'][0]['body'][0]['body'][0]['type'] == 'return_statement'
+    assert tree['body'][0]['body'][0]['body'][0]['expression']['type'] == 'integer_literal'
+    assert tree['body'][0]['body'][0]['body'][0]['expression']['value'] == 1
+    assert tree['body'][0]['body'][1]['type'] == 'if_statement'
+    assert tree['body'][0]['body'][1]['expression']['type'] == 'binary_expression'
+    assert tree['body'][0]['body'][1]['expression']['operator'] == '>'
+    assert tree['body'][0]['body'][1]['expression']['left']['type'] == 'identifier'
+    assert tree['body'][0]['body'][1]['expression']['left']['value'] == 'n'
+    assert tree['body'][0]['body'][1]['expression']['right']['type'] == 'integer_literal'
+    assert tree['body'][0]['body'][1]['expression']['right']['value'] == 1
+    assert len(tree['body'][0]['body'][1]['body']) == 1
+    assert tree['body'][0]['body'][1]['body'][0]['type'] == 'return_statement'
+    assert tree['body'][0]['body'][1]['body'][0]['expression']['type'] == 'binary_expression'
+    assert tree['body'][0]['body'][1]['body'][0]['expression']['operator'] == '*'
+    assert tree['body'][0]['body'][1]['body'][0]['expression']['left']['type'] == 'identifier'
+    assert tree['body'][0]['body'][1]['body'][0]['expression']['left']['value'] == 'n'
+    assert tree['body'][0]['body'][1]['body'][0]['expression']['right']['type'] == 'function_call'
+    assert tree['body'][0]['body'][1]['body'][0]['expression']['right']['name'] == 'factorial'
+    assert len(tree['body'][0]['body'][1]['body'][0]['expression']['right']['arguments']) == 1
+    assert tree['body'][0]['body'][1]['body'][0]['expression']['right']['arguments'][0]['type'] == 'binary_expression'
+    assert tree['body'][0]['body'][1]['body'][0]['expression']['right']['arguments'][0]['operator'] == '-'
+    assert tree['body'][0]['body'][1]['body'][0]['expression']['right']['arguments'][0]['left']['type'] == 'identifier'
+    assert tree['body'][0]['body'][1]['body'][0]['expression']['right']['arguments'][0]['left']['value'] == 'n'
+    assert tree['body'][0]['body'][1]['body'][0]['expression']['right']['arguments'][0]['right']['type'] == 'integer_literal'
+    assert tree['body'][0]['body'][1]['body'][0]['expression']['right']['arguments'][0]['right']['value'] == 1
+
 # Test invalid syntax
 def test_invalid_float_multiple_decimal_points(parser):  # pylint: disable=redefined-outer-name
     """Can parser detect invalid floats with multiple decimal points?"""
