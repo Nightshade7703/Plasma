@@ -1,7 +1,6 @@
 """
 Tests parsing of Plasma syntax.
 """
-import json
 import pytest
 from plasma.compiler import PlasmaParser
 
@@ -10,13 +9,23 @@ def parser():
     """Parser for all test functions."""
     return PlasmaParser()
 
-def pretty_print(dictionary: dict):
+def pretty_print(dictionary: dict, indent_level: int = 0):
     """Prints a dictionary in a more readable way."""
-    print(json.dumps(
-        dictionary,
-        ensure_ascii=False,
-        indent=4,
-    ))
+    indent = ' ' * (indent_level * 4)
+    for key, value in dictionary.items():
+        print(f"{indent}{key}: ", end='')
+        if isinstance(value, dict):
+            print()
+            pretty_print(value, indent_level + 1)
+        elif isinstance(value, list):
+            print()
+            for item in value:
+                if isinstance(item, dict):
+                    pretty_print(item, indent_level + 1)
+                else:
+                    print(f"{indent}    {item}")
+        else:
+            print(value)
 
 # Test valid syntax
 def test_valid_integer(parser):  # pylint: disable=redefined-outer-name
@@ -338,7 +347,7 @@ int add(int a, int b):
 def test_valid_if_statement(parser):  # pylint: disable=redefined-outer-name
     """Do if statements pass as statements?"""
     code = """
-bool factorial(int n):
+int factorial(int n):
     if n <= 1:
         return 1;
     if n > 1:
@@ -350,7 +359,7 @@ bool factorial(int n):
     assert tree['type'] == 'program'
     assert len(tree['body']) == 1
     assert tree['body'][0]['type'] == 'function_declaration'
-    assert tree['body'][0]['return_type'] == 'bool'
+    assert tree['body'][0]['return_type'] == 'int'
     assert tree['body'][0]['name'] == 'factorial'
     assert len(tree['body'][0]['parameters']) == 1
     assert tree['body'][0]['parameters'][0]['type'] == 'parameter'
@@ -390,6 +399,64 @@ bool factorial(int n):
     assert tree['body'][0]['body'][1]['body'][0]['expression']['right']['arguments'][0]['left']['value'] == 'n'
     assert tree['body'][0]['body'][1]['body'][0]['expression']['right']['arguments'][0]['right']['type'] == 'integer_literal'
     assert tree['body'][0]['body'][1]['body'][0]['expression']['right']['arguments'][0]['right']['value'] == 1
+
+def test_valid_if_elif_else_statement(parser):  # pylint: disable=redefined-outer-name
+    """Do if-elif-else statements with multiple branches pass as statements?"""
+    code = """
+int check_value(int x):
+    if x > 0:
+        int result = 1;
+    elif x == 0:
+        int result = 0;
+    elif x < -10:
+        int result = -1;
+    else:
+        int result = -2;
+    return result;
+"""
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert len(tree['body']) == 1
+    assert tree['body'][0]['type'] == 'function_declaration'
+    assert tree['body'][0]['name'] == 'check_value'
+    assert len(tree['body'][0]['parameters']) == 1
+    assert tree['body'][0]['parameters'][0]['param_type'] == 'int'
+    assert tree['body'][0]['parameters'][0]['name'] == 'x'
+    assert len(tree['body'][0]['body']) == 2  # if statement + return
+    # Check if statement
+    if_stmt = tree['body'][0]['body'][0]
+    assert if_stmt['type'] == 'if_statement'
+    assert if_stmt['condition']['type'] == 'binary_expression'
+    assert if_stmt['condition']['operator'] == '>'
+    assert if_stmt['condition']['left']['value'] == 'x'
+    assert if_stmt['condition']['right']['value'] == 0
+    assert len(if_stmt['body']) == 1
+    assert if_stmt['body'][0]['type'] == 'variable_declaration'
+    assert if_stmt['body'][0]['identifier'] == 'result'
+    assert if_stmt['body'][0]['expression']['value'] == 1
+    # Check first elif
+    assert if_stmt['alternative']['type'] == 'if_statement'
+    assert if_stmt['alternative']['condition']['operator'] == '=='
+    assert if_stmt['alternative']['condition']['left']['value'] == 'x'
+    assert if_stmt['alternative']['condition']['right']['value'] == 0
+    assert len(if_stmt['alternative']['body']) == 1
+    assert if_stmt['alternative']['body'][0]['expression']['value'] == 0
+    # Check second elif
+    assert if_stmt['alternative']['alternative']['type'] == 'if_statement'
+    assert if_stmt['alternative']['alternative']['condition']['operator'] == '<'
+    assert if_stmt['alternative']['alternative']['condition']['left']['value'] == 'x'
+    assert if_stmt['alternative']['alternative']['condition']['right']['value'] == -10
+    assert len(if_stmt['alternative']['alternative']['body']) == 1
+    assert if_stmt['alternative']['alternative']['body'][0]['expression']['value'] == -1
+    # Check else
+    assert isinstance(if_stmt['alternative']['alternative']['alternative'], list)
+    assert len(if_stmt['alternative']['alternative']['alternative']) == 1
+    assert if_stmt['alternative']['alternative']['alternative'][0]['expression']['value'] == -2
+    # Check return statement
+    assert tree['body'][0]['body'][1]['type'] == 'return_statement'
+    assert tree['body'][0]['body'][1]['expression']['value'] == 'result'
 
 # Test invalid syntax
 def test_invalid_float_multiple_decimal_points(parser):  # pylint: disable=redefined-outer-name

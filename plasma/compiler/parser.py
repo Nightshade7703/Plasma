@@ -18,6 +18,8 @@ class PlasmaTokenizer:
             ('BOOL', r'true|false'),
             ('TYPE', r'int|float|str|bool|void'),
             ('IF', r'if'),
+            ('ELIF', r'elif'),
+            ('ELSE', r'else'),
             ('RETURN', r'return'),
             ('OPERATOR', r'[+\-*/]|[=!<>]?=|[<>]'),
             ('IDENTIFIER', r'[a-zA-Z_][a-zA-Z0-9_]*'),
@@ -228,33 +230,39 @@ class PlasmaParser:
         return {'type': 'parameter', 'param_type': param_type, 'name': name}
 
     def _if_statement(self):
-        """Parses an if statement"""
-        self._eat('IF')
+        """Parses an if statement with elif and else if present."""
+        if self.lookahead and self.lookahead['type'] == 'IF':
+            self._eat('IF')
+        elif self.lookahead and self.lookahead['type'] == 'ELIF':
+            self._eat('ELIF')
         expression = self._expression()
+        self._eat('COLON')
+        self._eat('INDENT')
         body = []
-        if (expression['type'] == 'binary_expression' and expression['operator'] in
-                ('==', '!=', '<', '>', '<=', '>=')):
+        while self.lookahead and self.lookahead['type'] != 'DEDENT':
+            body.append(self._statement())
+            if self.lookahead and self.lookahead['type'] == 'SEMI':
+                self._eat('SEMI')
+        self._eat('DEDENT')
+        alternative = None
+        if self.lookahead and self.lookahead['type'] == 'ELIF':
+            alternative = self._if_statement()
+        elif self.lookahead and self.lookahead['type'] == 'ELSE':
+            self._eat('ELSE')
             self._eat('COLON')
             self._eat('INDENT')
+            else_body = []
             while self.lookahead and self.lookahead['type'] != 'DEDENT':
-                body.append(self._statement())
+                else_body.append(self._statement())
                 if self.lookahead and self.lookahead['type'] == 'SEMI':
                     self._eat('SEMI')
             self._eat('DEDENT')
-        elif expression['type'] == 'boolean_literal':
-            self._eat('COLON')
-            self._eat('INDENT')
-            while self.lookahead and self.lookahead['type'] != 'DEDENT':
-                body.append(self._statement())
-                if self.lookahead and self.lookahead['type'] == 'SEMI':
-                    self._eat('SEMI')
-            self._eat('DEDENT')
-        else:
-            raise SyntaxError("Expression must evaluate to bool")
+            alternative = else_body
         return {
             'type': 'if_statement',
             'expression': expression,
             'body': body,
+            'alternative': alternative,
         }
 
     def _return_statement(self):
