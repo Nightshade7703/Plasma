@@ -49,8 +49,9 @@ letter = "a".."z" | "A".."Z" ;
 digit = "0".."9" ;
 
 (* Comments *)
-comment = "//", { ? any character except newline ?}, newline ;
+comment = "//", { ? any character except newline ? }, newline ;
 newline = ? \n ? ;
+(* Comments are lexical tokens ignored by the parser, allowed wherever whitespace is permitted *)
 
 (* Indentation tokens *)
 INDENT = (* Represents an increase in indentation level, e.g., 4 spaces *);
