@@ -20,6 +20,7 @@ class PlasmaTokenizer:
             ('IF', r'if'),
             ('ELIF', r'elif'),
             ('ELSE', r'else'),
+            ('WHILE', r'while'),
             ('RETURN', r'return'),
             ('OPERATOR', r'[+\-*/]|[=!<>]?=|[<>]'),
             ('IDENTIFIER', r'[a-zA-Z_][a-zA-Z0-9_]*'),
@@ -167,6 +168,8 @@ class PlasmaParser:
             return self._variable_declaration()
         if self.lookahead['type'] == 'IF':
             return self._if_statement()
+        if self.lookahead['type'] == 'WHILE':
+            return self._while_statement()
         if self.lookahead['type'] == 'RETURN':
             return self._return_statement()
         return self._expression()
@@ -265,6 +268,24 @@ class PlasmaParser:
             'alternative': alternative,
         }
 
+    def _while_statement(self):
+        """Parses a while loop."""
+        self._eat('WHILE')
+        expression = self._expression()
+        self._eat('COLON')
+        self._eat('INDENT')
+        body = []
+        while self.lookahead and self.lookahead['type'] != 'DEDENT':
+            body.append(self._statement())
+            if self.lookahead and self.lookahead['type'] == 'SEMI':
+                self._eat('SEMI')
+        self._eat('DEDENT')
+        return {
+            'type': 'while_statement',
+            'expression': expression,
+            'body': body,
+        }
+
     def _return_statement(self):
         """Parses a return statement."""
         self._eat('RETURN')
@@ -281,7 +302,22 @@ class PlasmaParser:
                 and self._lookahead_next()['type'] == 'LPAREN'):
             return self._function_call()
         # Otherwise, parse comparative expression
-        return self._comparative_expression()
+        return self._assignment_expression()
+
+    def _assignment_expression(self):
+        """Parses assignment expression (=) with lowest precedence."""
+        left = self._comparative_expression()
+        while self.lookahead and (self.lookahead['type'] == 'OPERATOR' and
+                self.lookahead['value'] == '='):
+            self._eat('OPERATOR')
+            right = self._comparative_expression()
+            left = {
+                'type': 'binary_expression',
+                'operator': '=',
+                'left': left,
+                'right': right,
+            }
+        return left
 
     def _comparative_expression(self):
         """Parses comparison expressions (==, !=, <, >, <=, >=) with low precedence."""

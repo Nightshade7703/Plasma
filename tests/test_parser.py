@@ -424,30 +424,30 @@ int check_value(int x):
     assert len(tree['body'][0]['parameters']) == 1
     assert tree['body'][0]['parameters'][0]['param_type'] == 'int'
     assert tree['body'][0]['parameters'][0]['name'] == 'x'
-    assert len(tree['body'][0]['body']) == 2  # if statement + return
+    assert len(tree['body'][0]['body']) == 2
     # Check if statement
     if_stmt = tree['body'][0]['body'][0]
     assert if_stmt['type'] == 'if_statement'
-    assert if_stmt['condition']['type'] == 'binary_expression'
-    assert if_stmt['condition']['operator'] == '>'
-    assert if_stmt['condition']['left']['value'] == 'x'
-    assert if_stmt['condition']['right']['value'] == 0
+    assert if_stmt['expression']['type'] == 'binary_expression'
+    assert if_stmt['expression']['operator'] == '>'
+    assert if_stmt['expression']['left']['value'] == 'x'
+    assert if_stmt['expression']['right']['value'] == 0
     assert len(if_stmt['body']) == 1
     assert if_stmt['body'][0]['type'] == 'variable_declaration'
-    assert if_stmt['body'][0]['identifier'] == 'result'
+    assert if_stmt['body'][0]['name'] == 'result'
     assert if_stmt['body'][0]['expression']['value'] == 1
     # Check first elif
     assert if_stmt['alternative']['type'] == 'if_statement'
-    assert if_stmt['alternative']['condition']['operator'] == '=='
-    assert if_stmt['alternative']['condition']['left']['value'] == 'x'
-    assert if_stmt['alternative']['condition']['right']['value'] == 0
+    assert if_stmt['alternative']['expression']['operator'] == '=='
+    assert if_stmt['alternative']['expression']['left']['value'] == 'x'
+    assert if_stmt['alternative']['expression']['right']['value'] == 0
     assert len(if_stmt['alternative']['body']) == 1
     assert if_stmt['alternative']['body'][0]['expression']['value'] == 0
     # Check second elif
     assert if_stmt['alternative']['alternative']['type'] == 'if_statement'
-    assert if_stmt['alternative']['alternative']['condition']['operator'] == '<'
-    assert if_stmt['alternative']['alternative']['condition']['left']['value'] == 'x'
-    assert if_stmt['alternative']['alternative']['condition']['right']['value'] == -10
+    assert if_stmt['alternative']['alternative']['expression']['operator'] == '<'
+    assert if_stmt['alternative']['alternative']['expression']['left']['value'] == 'x'
+    assert if_stmt['alternative']['alternative']['expression']['right']['value'] == -10
     assert len(if_stmt['alternative']['alternative']['body']) == 1
     assert if_stmt['alternative']['alternative']['body'][0]['expression']['value'] == -1
     # Check else
@@ -457,6 +457,48 @@ int check_value(int x):
     # Check return statement
     assert tree['body'][0]['body'][1]['type'] == 'return_statement'
     assert tree['body'][0]['body'][1]['expression']['value'] == 'result'
+
+def test_valid_while_loop(parser):  # pylint: disable=redefined-outer-name
+    """Do while loops pass as statements?"""
+    code = """
+int sum_to(int n):
+    int total = 0;
+    while n > 0:
+        total = total + n;
+        n = n - 1;
+    return total;
+"""
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert len(tree['body']) == 1
+    assert tree['body'][0]['type'] == 'function_declaration'
+    assert tree['body'][0]['name'] == 'sum_to'
+    assert len(tree['body'][0]['parameters']) == 1
+    assert tree['body'][0]['parameters'][0]['param_type'] == 'int'
+    assert tree['body'][0]['parameters'][0]['name'] == 'n'
+    assert len(tree['body'][0]['body']) == 3
+    assert tree['body'][0]['body'][0]['type'] == 'variable_declaration'
+    assert tree['body'][0]['body'][0]['name'] == 'total'
+    assert tree['body'][0]['body'][0]['expression']['value'] == 0
+    assert tree['body'][0]['body'][1]['type'] == 'while_statement'
+    assert tree['body'][0]['body'][1]['expression']['operator'] == '>'
+    assert tree['body'][0]['body'][1]['expression']['left']['value'] == 'n'
+    assert tree['body'][0]['body'][1]['expression']['right']['value'] == 0
+    assert len(tree['body'][0]['body'][1]['body']) == 2
+    assert tree['body'][0]['body'][1]['body'][0]['operator'] == '='
+    assert tree['body'][0]['body'][1]['body'][0]['left']['value'] == 'total'
+    assert tree['body'][0]['body'][1]['body'][0]['right']['operator'] == '+'
+    assert tree['body'][0]['body'][1]['body'][0]['right']['left']['value'] == 'total'
+    assert tree['body'][0]['body'][1]['body'][0]['right']['right']['value'] == 'n'
+    assert tree['body'][0]['body'][1]['body'][1]['operator'] == '='
+    assert tree['body'][0]['body'][1]['body'][1]['left']['value'] == 'n'
+    assert tree['body'][0]['body'][1]['body'][1]['right']['operator'] == '-'
+    assert tree['body'][0]['body'][1]['body'][1]['right']['left']['value'] == 'n'
+    assert tree['body'][0]['body'][1]['body'][1]['right']['right']['value'] == 1
+    assert tree['body'][0]['body'][2]['type'] == 'return_statement'
+    assert tree['body'][0]['body'][2]['expression']['value'] == 'total'
 
 # Test invalid syntax
 def test_invalid_float_multiple_decimal_points(parser):  # pylint: disable=redefined-outer-name
