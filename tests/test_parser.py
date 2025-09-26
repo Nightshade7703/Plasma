@@ -351,7 +351,7 @@ def test_invalid_string_unterminated(parser):  # pylint: disable=redefined-outer
 def test_missing_semicolon(parser):  # pylint: disable=redefined-outer-name
     """Can parser detect missing semicolons?"""
     code = "int x = 42; int y = 20"
-    with pytest.raises(SyntaxError, match=r"Expected semicolon after statement"):
+    with pytest.raises(SyntaxError, match=r"Expected semicolon after variable_declaration"):
         parser.parse(code)
 
 def test_invalid_void_variable(parser):  # pylint: disable=redefined-outer-name

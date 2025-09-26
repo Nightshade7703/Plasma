@@ -6,10 +6,11 @@ import re
 class PlasmaTokenizer:
     """Class for tokenizing Plasma code."""
     def __init__(self, code: str):
-        self.code = code
+        self.code = code.rstrip()
         self.cursor = 0
         self.indent_levels = [0]
         self.line_start = True
+        # Regex patterns for tokens
         self.token_patterns = [
             ('FLOAT', r'-?\d+\.\d+'),
             ('INT', r'-?\d+'),
@@ -24,7 +25,8 @@ class PlasmaTokenizer:
             ('COMMA', r','),
             ('COLON', r':'),
             ('SEMI', r';'),
-            ('WHITESPACE', r'[ \t]*\n[ \t]*|[ \t]+'),
+            ('NEWLINE', r'\n'),
+            ('WHITESPACE', r'[ \t]+'),
             ('COMMENT', r'//[^\n]*'),
         ]
         self.regex = re.compile(
@@ -38,46 +40,54 @@ class PlasmaTokenizer:
 
     def get_next_token(self):
         """Obtains the next token using regex."""
+        # Handle EOF: emit remaining DEDENTs
         if not self.has_more_tokens():
             if len(self.indent_levels) > 1:
                 self.indent_levels.pop()
                 return {'type': 'DEDENT', 'value': ''}
             return None
 
-        if self.line_start:  # TODO fix indent/dedent detection
+        # Handle indentation at line start before matching other tokens
+        if self.line_start:
+            # Measure indent (spaces/tabs at current cursor)
             indent_match = re.match(r'^[ \t]*', self.code[self.cursor:])
+            indent_size = 0
             if indent_match:
                 indent_str = indent_match.group(0)
                 indent_size = len(indent_str.replace('\t', '    '))
                 self.cursor += len(indent_match.group(0))
-                if self.cursor < len(self.code) and self.code[self.cursor] == '\n':
+            # Skip empty lines or comment-only lines
+            if self.cursor < len(self.code) and self.code[self.cursor] == '\n':
+                self.line_start = True
+                self.cursor += 1
+                return self.get_next_token()
+            if self.cursor < len(self.code) and self.code[self.cursor: self.cursor+2] == '//':
+                comment_match = re.match(r'//[^\n]*\n?', self.code[self.cursor:])
+                if comment_match:
+                    self.cursor += len(comment_match.group(0))
                     self.line_start = True
-                    self.cursor += 1
                     return self.get_next_token()
-                if self.cursor < len(self.code) and self.code[self.cursor:self.cursor+2] == '//':
-                    comment_match = re.match(r'//[^\n]*\n?', self.code[self.cursor:])
-                    if comment_match:
-                        self.cursor += len(comment_match.group(0))
-                        self.line_start = True
-                        return self.get_next_token()
-                current_level = self.indent_levels[-1]
-                if indent_size > current_level:
-                    if indent_size % 4 != 0:
-                        raise SyntaxError(f"Inconsistent indent at position {self.cursor}: not " \
-                                          "multiple of 4 spaces")
-                    self.indent_levels.append(indent_size)
-                    self.line_start = False
-                    return {'type': 'INDENT', 'value': ''}
-                while indent_size < current_level and len(self.indent_levels) > 1:
-                    self.indent_levels.pop()
-                    current_level = self.indent_levels[-1]
-                    if indent_size < current_level:
-                        raise SyntaxError(f"Inconsistent dedent at position {self.cursor}: too " \
-                                          "few spaces")
-                    if indent_size == current_level:
-                        return {'type': 'DEDENT', 'value': ''}
+            # Compare indent size to current level
+            current_level = self.indent_levels[-1]
+            if indent_size > current_level:
+                if (indent_size - current_level) % 4 != 0:
+                    raise SyntaxError(f"Inconsistent indent at position {self.cursor}: not a " \
+                                      "multiple of 4 spaces")
+                self.indent_levels.append(indent_size)
                 self.line_start = False
+                return {'type': 'INDENT', 'value': ''}
+            while indent_size < current_level and len(self.indent_levels) > 1:
+                self.indent_levels.pop()
+                current_level = self.indent_levels[-1]
+                if indent_size < current_level:
+                    raise SyntaxError(f"Inconsistent dedent at position {self.cursor}: too few " \
+                                      "spaces")
+                if indent_size == current_level:
+                    self.line_start = False
+                    return {'type': 'DEDENT', 'value': ''}
+            self.line_start = False
 
+        # Match other tokens
         match = self.regex.match(self.code, self.cursor)
         if not match:
             raise SyntaxError(
@@ -85,10 +95,12 @@ class PlasmaTokenizer:
 
         for name, value in match.groupdict().items():
             if value is not None:
+                if name == 'NEWLINE':
+                    self.cursor = match.end()
+                    self.line_start = True
+                    return self.get_next_token()
                 if name == 'WHITESPACE':
                     self.cursor = match.end()
-                    if '\n' in value:
-                        self.line_start = True
                     return self.get_next_token()
                 if name == 'COMMENT':
                     self.cursor = match.end()
@@ -100,6 +112,7 @@ class PlasmaTokenizer:
                     raise SyntaxError(f"Unexpected keyword '{value}' cannot be used as an " \
                                       f"identifier at position {self.cursor - len(value)}")
                 self.cursor = match.end()
+                self.line_start = False
                 return {
                     'type': name,
                     'value': value,
@@ -124,7 +137,7 @@ class PlasmaParser:
         return self._program()
 
     def _program(self):
-        """Parses a program based on the rule program = { statement } ;"""
+        """Parses a program based on the rule program = { statement }"""
         node = {
             'type': 'program',
             'body': [],
@@ -133,11 +146,14 @@ class PlasmaParser:
         while self.lookahead and self.lookahead['type'] is not None:
             stmt = self._statement()
             node['body'].append(stmt)
-            # Require SEMI after each statement
-            if self.lookahead and self.lookahead['type'] == 'SEMI':
-                self._eat('SEMI')
-            else:
-                raise SyntaxError("Expected semicolon after statement")
+            # Require SEMI after non-block statements
+            if stmt['type'] not in ('function_declaration', 'if_statement', 'while_statement'):
+                if self.lookahead and self.lookahead['type'] == 'SEMI':
+                    self._eat('SEMI')
+                else:
+                    raise SyntaxError(f"Expected semicolon after {stmt['type']} statement")
+            elif self.lookahead and self.lookahead['type'] == 'SEMI':
+                self._eat('SEMI')  # Allow optional semicolon after function_declaration
         return node
 
     def _statement(self):
