@@ -500,6 +500,149 @@ int sum_to(int n):
     assert tree['body'][0]['body'][2]['type'] == 'return_statement'
     assert tree['body'][0]['body'][2]['expression']['value'] == 'total'
 
+def test_valid_for_loop(parser):  # pylint: disable=redefined-outer-name
+    """Do for loops pass as statements?"""
+    code = """
+int sum_range(int n):
+    int total = 0;
+    for i in range(n):
+        total = total + i;
+    return total;
+"""
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert len(tree['body']) == 1
+    assert tree['body'][0]['type'] == 'function_declaration'
+    assert tree['body'][0]['name'] == 'sum_range'
+    assert len(tree['body'][0]['parameters']) == 1
+    assert tree['body'][0]['parameters'][0]['param_type'] == 'int'
+    assert tree['body'][0]['parameters'][0]['name'] == 'n'
+    assert len(tree['body'][0]['body']) == 3
+    assert tree['body'][0]['body'][0]['type'] == 'variable_declaration'
+    assert tree['body'][0]['body'][0]['name'] == 'total'
+    assert tree['body'][0]['body'][0]['expression']['value'] == 0
+    assert tree['body'][0]['body'][1]['type'] == 'for_statement'
+    assert tree['body'][0]['body'][1]['counter'] == 'i'
+    assert tree['body'][0]['body'][1]['range']['value'] == 'n'
+    assert len(tree['body'][0]['body'][1]['body']) == 1
+    assert tree['body'][0]['body'][1]['body'][0]['operator'] == '='
+    assert tree['body'][0]['body'][1]['body'][0]['left']['value'] == 'total'
+    assert tree['body'][0]['body'][1]['body'][0]['right']['operator'] == '+'
+    assert tree['body'][0]['body'][1]['body'][0]['right']['left']['value'] == 'total'
+    assert tree['body'][0]['body'][1]['body'][0]['right']['right']['value'] == 'i'
+    assert tree['body'][0]['body'][2]['type'] == 'return_statement'
+    assert tree['body'][0]['body'][2]['expression']['value'] == 'total'
+
+def test_valid_program(parser):  # pylint: disable=redefined-outer-name
+    """Do multiple statements pass as a program?"""
+    code = """
+float add(int a, int b):
+    return a + b;
+
+bool is_positive(int x):
+    if x > 0:
+        return true;
+    elif x == 0:
+        return false;
+    else:
+        return false;
+
+int main():
+    int x = 42;
+    float sum = add(x, 10);
+    bool pos = is_positive(x);
+    int total = 0;
+    for i in range(5):
+        total = total + i;
+    return total;
+"""
+    tree = parser.parse(code)
+    pretty_print(tree)
+    assert tree is not None
+    assert tree['type'] == 'program'
+    assert len(tree['body']) == 2
+    assert tree['body'][0]['type'] == 'function_declaration'
+    assert tree['body'][0]['return_type'] == 'float'
+    assert tree['body'][0]['name'] == 'add'
+    assert len(tree['body'][0]['parameters']) == 3
+    assert tree['body'][0]['parameters'][0]['param_type'] == 'int'
+    assert tree['body'][0]['parameters'][0]['name'] == 'a'
+    assert tree['body'][0]['parameters'][1]['param_type'] == 'int'
+    assert tree['body'][0]['parameters'][1]['name'] == 'b'
+    assert len(tree['body'][0]['body']) == 1
+    assert tree['body'][0]['body'][0]['type'] == 'return_statement'
+    assert tree['body'][0]['body'][0]['expression']['operator'] == '+'
+    assert tree['body'][0]['body'][0]['expression']['left']['value'] == 'a'
+    assert tree['body'][0]['body'][0]['expression']['right']['value'] == 'b'
+    assert tree['body'][1]['type'] == 'function_declaration'
+    assert tree['body'][1]['return_type'] == 'bool'
+    assert tree['body'][1]['name'] == 'is_positive'
+    assert len(tree['body'][1]['parameters']) == 1
+    assert tree['body'][1]['parameters'][0]['param_type'] == 'int'
+    assert tree['body'][1]['parameters'][0]['name'] == 'x'
+    assert len(tree['body'][1]['body']) == 1
+    if_stmt = tree['body'][1]['body'][0]
+    assert if_stmt['type'] == 'if_statement'
+    assert if_stmt['expression']['type'] == 'binary_expression'
+    assert if_stmt['expression']['operator'] == '>'
+    assert if_stmt['expression']['left']['value'] == 'x'
+    assert if_stmt['expression']['right']['value'] == 0
+    assert len(if_stmt['body']) == 1
+    assert if_stmt['body'][0]['type'] == 'return_statement'
+    assert if_stmt['body'][0]['expression']['value'] is True
+    assert if_stmt['alternative']['type'] == 'if_statement'
+    assert if_stmt['alternative']['expression']['operator'] == '=='
+    assert if_stmt['alternative']['expression']['left']['value'] == 'x'
+    assert if_stmt['alternative']['expression']['right']['value'] == 0
+    assert len(if_stmt['alternative']['body']) == 1
+    assert if_stmt['alternative']['body'][0]['type'] == 'return_statement'
+    assert if_stmt['alternative']['body'][0]['expression']['value'] is False
+    assert isinstance(if_stmt['alternative']['alternative'], list)
+    assert len(if_stmt['alternative']['alternative']) == 1
+    assert if_stmt['alternative']['alternative'][0]['type'] == 'return_statement'
+    assert if_stmt['alternative']['alternative'][0]['expression']['value'] is False
+    assert tree['body'][2]['type'] == 'function_declaration'
+    assert tree['body'][2]['return_type'] == 'float'
+    assert tree['body'][2]['name'] == 'add'
+    assert len(tree['body'][2]['parameters']) == 0
+    assert len(tree['body'][2]['body']) == 6
+    assert tree['body'][2]['body'][0]['type'] == 'variable_declaration'
+    assert tree['body'][2]['body'][0]['var_type'] == 'int'
+    assert tree['body'][2]['body'][0]['name'] == 'x'
+    assert tree['body'][2]['body'][0]['expression']['value'] == 42
+    assert tree['body'][2]['body'][1]['type'] == 'variable_declaration'
+    assert tree['body'][2]['body'][1]['var_type'] == 'float'
+    assert tree['body'][2]['body'][1]['name'] == 'sum'
+    assert tree['body'][2]['body'][1]['expression']['type'] == 'function_call'
+    assert tree['body'][2]['body'][1]['expression']['name'] == 'add'
+    assert len(tree['body'][2]['body'][1]['expression']['arguments']) == 2
+    assert tree['body'][2]['body'][1]['expression']['arguments'][0]['value'] == 'x'
+    assert tree['body'][2]['body'][1]['expression']['arguments'][1]['value'] == 10
+    assert tree['body'][2]['body'][2]['type'] == 'variable_declaration'
+    assert tree['body'][2]['body'][2]['var_type'] == 'bool'
+    assert tree['body'][2]['body'][2]['name'] == 'pos'
+    assert tree['body'][2]['body'][2]['expression']['type'] == 'function_call'
+    assert tree['body'][2]['body'][2]['expression']['name'] == 'is_positive'
+    assert len(tree['body'][2]['body'][2]['expression']['arguments']) == 2
+    assert tree['body'][2]['body'][2]['expression']['arguments'][0]['value'] == 'x'
+    assert tree['body'][2]['body'][3]['type'] == 'variable_declaration'
+    assert tree['body'][2]['body'][3]['var_type'] == 'int'
+    assert tree['body'][2]['body'][3]['name'] == 'total'
+    assert tree['body'][2]['body'][3]['expression']['value'] == 0
+    assert tree['body'][2]['body'][4]['type'] == 'for_loop'
+    assert tree['body'][2]['body'][4]['counter'] == 'i'
+    assert tree['body'][2]['body'][4]['range']['value'] == 5
+    assert len(tree['body'][2]['body'][4]['body']) == 1
+    assert tree['body'][2]['body'][4]['body'][0]['operator'] == '='
+    assert tree['body'][2]['body'][4]['body'][0]['left']['value'] == 'total'
+    assert tree['body'][2]['body'][4]['body'][0]['right']['operator'] == '+'
+    assert tree['body'][2]['body'][4]['body'][0]['right']['left']['value'] == 'total'
+    assert tree['body'][2]['body'][4]['body'][0]['right']['right']['value'] == 'i'
+    assert tree['body'][2]['body'][5]['type'] == 'return_statement'
+    assert tree['body'][2]['body'][5]['expression']['value'] == 'total'
+
 # Test invalid syntax
 def test_invalid_float_multiple_decimal_points(parser):  # pylint: disable=redefined-outer-name
     """Can parser detect invalid floats with multiple decimal points?"""

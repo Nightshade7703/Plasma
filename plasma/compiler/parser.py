@@ -21,6 +21,9 @@ class PlasmaTokenizer:
             ('ELIF', r'elif'),
             ('ELSE', r'else'),
             ('WHILE', r'while'),
+            ('FOR', r'for'),
+            ('IN', r'in'),
+            ('RANGE', r'range'),
             ('RETURN', r'return'),
             ('OPERATOR', r'[+\-*/]|[=!<>]?=|[<>]'),
             ('IDENTIFIER', r'[a-zA-Z_][a-zA-Z0-9_]*'),
@@ -81,14 +84,16 @@ class PlasmaTokenizer:
                 self.line_start = False
                 return {'type': 'INDENT', 'value': ''}
             while indent_size < current_level and len(self.indent_levels) > 1:
+                print(f"Dedenting from {current_level} to {indent_size}, stack: " \
+                      f"{self.indent_levels}")
                 self.indent_levels.pop()
                 current_level = self.indent_levels[-1]
-                if indent_size < current_level:
-                    raise SyntaxError(f"Inconsistent dedent at position {self.cursor}: too few " \
-                                      "spaces")
                 if indent_size == current_level:
                     self.line_start = False
                     return {'type': 'DEDENT', 'value': ''}
+            if indent_size != current_level:
+                raise SyntaxError("Unindent does not match any outer indentation level at " \
+                                  f"position {self.cursor}")
             self.line_start = False
 
         # Match other tokens
@@ -151,7 +156,8 @@ class PlasmaParser:
             stmt = self._statement()
             node['body'].append(stmt)
             # Require SEMI after non-block statements
-            if stmt['type'] not in ('function_declaration', 'if_statement', 'while_statement'):
+            if stmt['type'] not in ('function_declaration', 'if_statement',
+                                    'while_statement', 'for_statement'):
                 if self.lookahead and self.lookahead['type'] == 'SEMI':
                     self._eat('SEMI')
                 else:
@@ -160,6 +166,7 @@ class PlasmaParser:
                 self._eat('SEMI')  # Allow optional semicolon after function_declaration
         return node
 
+    # Statements
     def _statement(self):
         """Parses a statement (variable_declaration, function_declaration, if_statement,
         while_statement, for_statement, or return_statement)"""
@@ -170,6 +177,8 @@ class PlasmaParser:
             return self._if_statement()
         if self.lookahead['type'] == 'WHILE':
             return self._while_statement()
+        if self.lookahead['type'] == 'FOR':
+            return self._for_statement()
         if self.lookahead['type'] == 'RETURN':
             return self._return_statement()
         return self._expression()
@@ -286,6 +295,30 @@ class PlasmaParser:
             'body': body,
         }
 
+    def _for_statement(self):
+        """Parses a for loop."""
+        self._eat('FOR')
+        counter = self._eat('IDENTIFIER')['value']
+        self._eat('IN')
+        self._eat('RANGE')
+        self._eat('LPAREN')
+        _range = self._expression()
+        self._eat('RPAREN')
+        self._eat('COLON')
+        self._eat('INDENT')
+        body = []
+        while self.lookahead and self.lookahead['type'] != 'DEDENT':
+            body.append(self._statement())
+            if self.lookahead and self.lookahead['type'] == 'SEMI':
+                self._eat('SEMI')
+        self._eat('DEDENT')
+        return {
+            'type': 'for_statement',
+            'counter': counter,
+            'range': _range,
+            'body': body,
+        }
+
     def _return_statement(self):
         """Parses a return statement."""
         self._eat('RETURN')
@@ -295,6 +328,7 @@ class PlasmaParser:
             'expression': expr,
         }
 
+    # Expressions
     def _expression(self):
         """Parses an expression (comparative_expression or function_call)."""
         # Check for function call (IDENTIFIER followed by LPAREN)
@@ -376,6 +410,7 @@ class PlasmaParser:
         raise SyntaxError(f"Unexpected token type: {self.lookahead['type']}. " \
                           "Expected: INT, FLOAT, STR, BOOL, or IDENTIFIER")
 
+    # Literals
     def _literal(self):
         """Returns a literal (int, float, str, or bool)."""
         if self.lookahead is None:

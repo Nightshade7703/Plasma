@@ -152,6 +152,7 @@ bool is_positive(int x):
     else:
         return false;
 
+// Main function not required like in C, but convenient nonetheless
 int main():
     int x = 42;
     float sum = add(x, 10);
